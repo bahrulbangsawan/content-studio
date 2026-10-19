@@ -3,14 +3,16 @@
 // listed in audio/voice.json with where the speech sits in each clip and, when a transcription key exists, the
 // time of every word (so captions and on-screen words follow the voice exactly). Unchanged lines are kept:
 // editing one scene re-records one scene.
-// Usage: node voice.mjs <slug> [--provider gemini|say] [--voice Sulafat] [--style "..."] [--model gemini-3.8-flash-tts]
+// Usage: node voice.mjs <slug> [--preset semangat|tenang] [--provider gemini|say] [--voice X] [--style "..."] [--model M]
 //                              [--force] [--no-align] [--root <workspace>]
-//        node voice.mjs list                         Gemini voices
-//        node voice.mjs try "<kalimat>" [--voice X] [--style "..."] [--provider ...]   voice-try.wav to listen to
+//        node voice.mjs list                         voice presets and Gemini voices
+//        node voice.mjs try "<kalimat>" [--preset X] [--voice X] [--style "..."]   voice-try.wav to listen to
+// Voice settings, last wins: the default preset (config), brand.json "voice", reel.json "voice", flags.
+// Each layer may name a preset (voice, style and model together) and override single fields.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parseArgs, workspace, readJson, fail } from './lib/common.mjs';
-import { tts, stt, sttProvider, GEMINI_VOICES } from './lib/speech.mjs';
+import { tts, stt, sttProvider, GEMINI_VOICES, VOICE_PRESETS, DEFAULT_VOICE_PRESET } from './lib/speech.mjs';
 import { readWav, speechMap, wavFromPcm } from './lib/audio.mjs';
 import { voWords, wordTimes } from './lib/reel-time.mjs';
 import { voKey } from './lib/reel-render.mjs';
@@ -20,22 +22,31 @@ const args = parseArgs();
 const cmd = args._[0];
 if (!cmd) fail('Pakai: node voice.mjs <slug> | list | try "<kalimat>"');
 
-function settings(reel = {}) {
-  const v = reel.voice || {};
+/* One layer of voice settings: its preset first, then its own fields */
+function layer(x) {
+  if (!x) return {};
+  if (x.preset && !VOICE_PRESETS[x.preset]) fail(`Preset suara "${x.preset}" tidak ada. Pilihan: ${Object.keys(VOICE_PRESETS).join(', ')}.`);
+  const { label, ...p } = VOICE_PRESETS[x.preset] || {};
+  const own = Object.fromEntries(['provider', 'voice', 'style', 'model'].filter(k => x[k] !== undefined && x[k] !== '').map(k => [k, x[k]]));
+  return { ...p, ...own, ...(x.preset ? { preset: x.preset } : {}) };
+}
+function settings(reel = {}, brand = {}) {
+  const base = layer({ preset: get('gemini.voicePreset') || DEFAULT_VOICE_PRESET, voice: get('gemini.voice'), style: get('gemini.style') });
+  const flags = { ...(args.preset ? { preset: args.preset } : {}), ...(args.voice ? { voice: args.voice } : {}), ...(typeof args.style === 'string' ? { style: args.style } : {}), ...(args.model ? { model: args.model } : {}) };
+  const v = { ...base, ...layer(brand.voice), ...layer(reel.voice), ...layer(flags) };
   const provider = args.provider || v.provider || (get('gemini.apiKey') ? 'gemini' : process.platform === 'darwin' ? 'say' : 'gemini');
   if (provider === 'none') fail('reel.json memakai voice.provider "none": video ini tanpa suara.');
-  /* A voice name belongs to its provider: a Gemini voice in reel.json does not carry over to the Mac preview */
-  const own = v.provider === provider || (!v.provider && provider === 'gemini') ? v.voice : null;
-  const voice = args.voice || own || (provider === 'say' ? 'Damayanti' : get('gemini.voice'));
-  const style = args.style ?? v.style ?? (provider === 'gemini' ? get('gemini.style') : '');
-  const model = provider === 'gemini' ? args.model || v.model || get('gemini.ttsModel') : '';
-  return { provider, voice, style: provider === 'say' ? '' : style, model };
+  /* A Gemini voice does not carry over to the Mac preview voice */
+  if (provider === 'say') return { provider, voice: args.voice || (reel.voice && reel.voice.provider === 'say' && reel.voice.voice) || 'Damayanti', style: '', model: '', preset: '' };
+  return { provider, voice: v.voice, style: v.style || '', model: v.model || get('gemini.ttsModel'), preset: v.preset || '' };
 }
 
 if (cmd === 'list') {
-  console.log('\nSuara Gemini (pilih lewat "voice" di reel.json, atau --voice):\n');
+  console.log('\nPreset suara (pakai "voice": { "preset": "<nama>" } di reel.json atau brand.json, atau --preset):\n');
+  for (const [k, p] of Object.entries(VOICE_PRESETS)) console.log(`  ${k.padEnd(10)}${p.label}\n  ${''.padEnd(10)}suara ${p.voice}, ${p.model}${k === (get('gemini.voicePreset') || DEFAULT_VOICE_PRESET) ? ', bawaan' : ''}\n`);
+  console.log('Suara Gemini (ganti suara preset lewat "voice" atau --voice):\n');
   GEMINI_VOICES.forEach(([n, d], k) => console.log(`  ${n.padEnd(15)}${d.padEnd(16)}${k % 2 ? '\n' : ''}`));
-  console.log(`\nBawaan: ${get('gemini.voice')}. Coba dulu: content-studio voice try "Halo, ini contoh suara." --voice Achird`);
+  console.log(`\nCoba dulu: content-studio voice try "Halo, ini contoh suara." --preset semangat, atau --voice Achird`);
   console.log('Suara tambahan per bahasa ada di Extended Voice Library Gemini; id-nya bisa dipakai di "voice".\n');
   process.exit(0);
 }
@@ -48,7 +59,7 @@ if (cmd === 'try') {
     const wav = await tts(s.provider, text, s);
     const out = join(process.cwd(), 'voice-try.wav');
     writeFileSync(out, wav);
-    console.log(`✓ ${relative(process.cwd(), out)} (${readWav(wav).duration.toFixed(1)} detik, ${s.provider}${s.model ? ' ' + s.model : ''}, suara ${s.voice}). Putar untuk mendengarkan.`);
+    console.log(`✓ ${relative(process.cwd(), out)} (${readWav(wav).duration.toFixed(1)} detik, ${s.provider}${s.model ? ' ' + s.model : ''}, ${s.preset ? `preset ${s.preset}, ` : ''}suara ${s.voice}). Putar untuk mendengarkan.`);
   } catch (e) { fail(e.message, e.code === 'NO_KEY' ? 2 : 1); }
   process.exit(0);
 }
@@ -59,11 +70,12 @@ const dir = join(root, 'posts', slug);
 const reelPath = join(dir, 'reel.json');
 if (!existsSync(reelPath)) fail(`posts/${slug}/reel.json tidak ada. Voice over hanya untuk reel.`);
 const reel = readJson(reelPath, 'reel.json');
-const cfg = settings(reel);
+let brandJson = {};
+try { brandJson = JSON.parse(readFileSync(join(root, 'brands', reel.brand, 'brand.json'), 'utf8')); } catch (e) { /* no account yet */ }
+const cfg = settings(reel, brandJson);
 /* How English words and names are said: the account's list (brand.json "pronounce"), then this reel's
    (voice.pronounce). The TTS reads the respelling; captions keep the script as written. */
-let brandPron = {};
-try { brandPron = JSON.parse(readFileSync(join(root, 'brands', reel.brand, 'brand.json'), 'utf8')).pronounce || {}; } catch (e) { /* no account yet */ }
+const brandPron = brandJson.pronounce || {};
 const PRON = Object.entries({ ...brandPron, ...((reel.voice && reel.voice.pronounce) || {}) }).sort((a, b) => b[0].length - a[0].length);
 const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const ttsText = vo => PRON.reduce((t, [w, say]) => t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escRe(w)}(?![\\p{L}\\p{N}])`, 'giu'), say), String(vo).trim());
@@ -79,7 +91,7 @@ const sameVoice = c => c && c.provider === cfg.provider && c.voice === cfg.voice
 const current = (c, s) => sameVoice(c) && (c.tts || c.text) === ttsText(s.vo);
 const todo = [...want.entries()].filter(([k, s]) => args.force || !current(man.clips[k], s) || !existsSync(join(audioDir, man.clips[k].file)) || (align && !man.clips[k].words));
 
-console.log(`\nVoice over posts/${slug}: ${want.size} kalimat, ${todo.length} perlu dibuat (${cfg.provider}${cfg.model ? ' ' + cfg.model : ''}, suara ${cfg.voice}${cfg.style ? `, gaya "${cfg.style}"` : ''})${align ? `, waktu per kata lewat ${sttProvider()}` : ''}.`);
+console.log(`\nVoice over posts/${slug}: ${want.size} kalimat, ${todo.length} perlu dibuat (${cfg.provider}${cfg.model ? ' ' + cfg.model : ''}, ${cfg.preset ? `preset ${cfg.preset}, ` : ''}suara ${cfg.voice})${align ? `, waktu per kata lewat ${sttProvider()}` : ''}.`);
 if (cfg.provider === 'say') console.log('  Suara Mac hanya untuk pratinjau. Untuk publikasi pakai Gemini: content-studio setup, lalu --provider gemini.');
 let done = 0, failed = 0, requests = 0, stopped = '';
 const lang = (reel.voice && reel.voice.language) || 'id';
@@ -209,7 +221,7 @@ if (stopped) console.log(`  Kuota habis. Coba lagi nanti, atau naikkan tier di h
 for (const k of Object.keys(man.clips)) if (!want.has(k)) delete man.clips[k];
 const keep = new Set(Object.values(man.clips).map(c => c.file));
 for (const f of readdirSync(audioDir)) if (/^vo-[0-9a-f]+\.wav$/.test(f) && !keep.has(f)) rmSync(join(audioDir, f));
-Object.assign(man, { provider: cfg.provider, model: cfg.model, voice: cfg.voice, style: cfg.style, updatedAt: new Date().toISOString() });
+Object.assign(man, { provider: cfg.provider, model: cfg.model, voice: cfg.voice, style: cfg.style, preset: cfg.preset, updatedAt: new Date().toISOString() });
 writeFileSync(manPath, JSON.stringify(man, null, 1) + '\n');
 const total = [...want.keys()].reduce((n, k) => n + (man.clips[k] ? man.clips[k].dur : 0), 0);
 console.log(`\n${failed ? `✗ ${failed} kalimat gagal. Jalankan ulang perintah ini untuk mencoba lagi.` : '✓ Voice over lengkap.'} ${Math.round(total)} detik suara di posts/${slug}/audio/.`);

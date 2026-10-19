@@ -147,8 +147,8 @@ async function doctor(online) {
     try { await request('PubMed', 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi?db=pubmed&retmode=json', { retries: 0, timeout: 20000 }); ok(true, 'PubMed dan internet'); }
     catch (e) { ok(false, 'PubMed', e.message); }
   }
-  const voice = lookup('gemini.voice'), model = lookup('gemini.ttsModel');
-  console.log(`\nVoice over: ${model.value}, suara ${voice.value}. Ubah: content-studio config set gemini.voice <nama>\n`);
+  const preset = lookup('gemini.voicePreset');
+  console.log(`\nVoice over: preset ${preset.value} (lihat semua: content-studio voice list). Ubah bawaan: content-studio config set gemini.voicePreset <nama>\n`);
 }
 
 function config(list) {

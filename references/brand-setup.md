@@ -171,6 +171,19 @@ Contoh, durasi lebih pendek tanpa logo di header:
 "videoRules": { "maxSeconds": 60, "headerBrand": false }
 ```
 
+### Suara akun (`voice`)
+
+Nada voice over untuk semua reel akun, sebagai preset:
+
+```json
+"voice": { "preset": "semangat" }
+```
+
+- `semangat`: Laomedeia, bersemangat dan interaktif, istilah Inggris dengan lafal asli.
+- `tenang`: Sulafat, hangat dan tenang, tempo sedang.
+
+Boleh ditambah `voice`, `style`, atau `model` untuk mengganti satu bagian preset. Reel tetap bisa memilih preset lain di `voice.preset` reel.json. Lihat semua preset dengan `content-studio voice list`.
+
 ### Pelafalan voice over (`pronounce`)
 
 Kata atau nama bahasa Inggris yang dibaca dengan lafal Indonesia oleh suara TTS bisa diberi cara ucap:

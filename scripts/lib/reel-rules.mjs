@@ -9,13 +9,14 @@ import { countWords } from './common.mjs';
 import { findPhrase } from './kit.mjs';
 import { MEDIA_FILE, kindOf } from './media.mjs';
 import { spoken, voWords } from './reel-time.mjs';
+import { VOICE_PRESETS } from './speech.mjs';
 import { createHash } from 'node:crypto';
 /* Same key as reel-render.mjs voKey (kept here to avoid a circular import) */
 const voKeyOf = s => createHash('sha256').update(JSON.stringify([String(s.vo || '').trim(), String(s.tone || '').trim()])).digest('hex').slice(0, 16);
 
 const POST_KEYS = ['brand', 'slug', 'title', 'format', 'caption', 'voice', 'captions', 'music', 'sources', 'scenes', 'hooks', 'closings'];
 const SOURCE_KEYS = ['id', 'cite', 'short', 'doi', 'pmid', 'url', 'year', 'note', 'verified', 'design'];
-const VOICE_KEYS = ['provider', 'voice', 'style', 'model', 'language', 'pronounce'];
+const VOICE_KEYS = ['preset', 'provider', 'voice', 'style', 'model', 'language', 'pronounce'];
 const MEDIA_KEYS = ['src', 'alt', 'focus', 'from', 'move', 'still'];
 const PLACEHOLDER = /\bTODO\b|lorem ipsum|\[[^\]]{2,}\]|\bxxx\b/i;
 /* A claim of research or a figure in the voice or on screen needs a source on that scene */
@@ -41,6 +42,7 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     else {
       for (const k of Object.keys(v)) if (!VOICE_KEYS.includes(k)) errors.push(`voice.${k} tidak dikenal. Pilihan: ${VOICE_KEYS.join(', ')}.`);
       if (v.provider && !['gemini', 'say', 'none'].includes(v.provider)) errors.push('voice.provider: gemini, say (suara Mac untuk pratinjau), atau none.');
+      if (v.preset !== undefined && !VOICE_PRESETS[v.preset]) errors.push(`voice.preset: ${Object.keys(VOICE_PRESETS).join(', ')} (lihat: content-studio voice list).`);
       if (v.style && String(v.style).length > 240) errors.push('voice.style maksimal 240 karakter. Gaya singkat bekerja paling baik.');
       if (v.pronounce !== undefined && (typeof v.pronounce !== 'object' || Array.isArray(v.pronounce) || Object.values(v.pronounce).some(x => typeof x !== 'string'))) errors.push('voice.pronounce harus objek { "W-sitting": "double-u sitting" }: cara suara mengucapkan kata itu.');
     }

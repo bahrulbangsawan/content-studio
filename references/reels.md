@@ -76,9 +76,23 @@ Voice over adalah isi utama. Teks di layar hanya kata kunci dan angka yang dilih
   - Sapa penonton langsung ("kamu", "si kecil").
   - Tanya, lalu jawab ("Faktanya?", "Hampir sama, kan?").
   - Pakai kalimat pendek dan bahasa lisan yang wajar.
-- **Gaya bicara** diatur sekali di `voice.style`, dengan bahasa Inggris yang paling dipatuhi model. Bawaannya: "Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation."
+- **Preset suara.** Pilih nadanya dengan preset, tidak perlu menulis gaya sendiri:
+
+  | Preset | Suara | Nada |
+  | --- | --- | --- |
+  | `semangat` (bawaan) | Laomedeia | bersemangat dan interaktif, seperti kreator yang ngobrol langsung ke penonton; istilah Inggris dengan lafal asli |
+  | `tenang` | Sulafat | hangat dan tenang, tempo sedang, untuk topik yang serius |
+
+  - **Urutan berlaku, yang terakhir menang:**
+    1. Preset bawaan (`config gemini.voicePreset`).
+    2. `voice` di brand.json, untuk semua reel akun.
+    3. `voice` di reel.json.
+    4. `--preset`, `--voice`, dan `--style` di perintah.
+  - Setiap lapisan boleh menyebut `preset` lalu mengganti satu bagian saja, misalnya { "preset": "semangat", "voice": "Puck" }.
+  - Daftar preset: `content-studio voice list`. Dengar dulu: `content-studio voice try "Kalimat contoh." --preset tenang`.
+- **Gaya bicara sendiri** (`voice.style`) menggantikan gaya preset. Bahasa Inggris paling dipatuhi model.
   - Per adegan pakai `tone`, tapi `tone` yang berbeda menambah permintaan TTS.
-  - Jangan menulis umur, jenis kelamin, atau aksen di gaya; pilih suaranya. Suara bawaan Laomedeia (bersemangat).
+  - Jangan menulis umur, jenis kelamin, atau aksen di gaya; pilih suaranya.
 - **Istilah bahasa Inggris** ditulis dalam bentuk aslinya (follow, screen time, W-sitting) dan diucapkan dengan lafal Inggris.
   - Kata yang tetap terbaca ala Indonesia diberi cara ucap di `voice.pronounce` (reel ini) atau `pronounce` di brand.json (semua reel akun), misalnya { "partofphysio": "part of physio" }.
   - Subtitle tetap menampilkan tulisan aslinya.
@@ -115,7 +129,7 @@ Konten kesehatan harus berbasis bukti. Aturannya:
   "slug": "duduk-w",
   "title": "Duduk W pada anak",
   "caption": "Teks posting Instagram, lalu tagar.",
-  "voice": { "provider": "gemini", "voice": "Sulafat", "style": "hangat dan tenang, tempo sedang" },
+  "voice": { "provider": "gemini", "preset": "semangat" },
   "captions": true,
   "music": { "src": "musik.mp3", "volume": 0.12 },
   "sources": [ { "id": "s1", "short": "Nordon dkk., 2025", "cite": "...", "doi": "10.1590/...", "pmid": "39802577", "year": 2025 } ],

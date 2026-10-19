@@ -85,7 +85,9 @@ export function videoZones(v) {
 }
 
 const COLOR_KEYS = ['bg', 'card', 'ink', 'muted', 'accent'];
-const ALLOWED_TOP = ['id', 'name', 'handle', 'wordmark', 'language', 'logo', 'font', 'colors', 'disclaimer', 'swipeLabel', 'structure', 'rules', 'videoRules', 'pronounce', 'dos'];
+const ALLOWED_TOP = ['id', 'name', 'handle', 'wordmark', 'language', 'logo', 'font', 'colors', 'disclaimer', 'swipeLabel', 'structure', 'rules', 'videoRules', 'voice', 'pronounce', 'dos'];
+/* Voice preset names (defined in speech.mjs, which this file does not load) */
+const VOICE_PRESET_NAMES = ['semangat', 'tenang'];
 
 export const brandDir = (root, id) => join(root, 'brands', id);
 
@@ -167,6 +169,15 @@ export function validateBrand(b, dir) {
       if (v.maxSeconds > v.hardMaxSeconds) errors.push('videoRules.maxSeconds tidak boleh lebih dari hardMaxSeconds.');
     }
     if (videoRulesOf(b).requireDisclaimer && !b.disclaimer) errors.push('disclaimer wajib karena videoRules.requireDisclaimer aktif.');
+  }
+  /* The account's voice for every reel: a preset and, if wanted, its own voice, style or model */
+  if (b.voice !== undefined) {
+    if (typeof b.voice !== 'object' || Array.isArray(b.voice)) errors.push('voice harus objek { "preset": "semangat" }.');
+    else {
+      for (const k of Object.keys(b.voice)) if (!['preset', 'voice', 'style', 'model'].includes(k)) errors.push(`voice.${k} tidak dikenal. Pilihan: preset, voice, style, model.`);
+      if (b.voice.preset !== undefined && !VOICE_PRESET_NAMES.includes(b.voice.preset)) errors.push(`voice.preset: ${VOICE_PRESET_NAMES.join(', ')}.`);
+      if (b.voice.style !== undefined && String(b.voice.style).length > 240) errors.push('voice.style maksimal 240 karakter.');
+    }
   }
   /* How the voice-over says words the TTS would read the Indonesian way: { "partofphysio": "part of physio" } */
   if (b.pronounce !== undefined && (typeof b.pronounce !== 'object' || Array.isArray(b.pronounce) || Object.entries(b.pronounce).some(([k, x]) => typeof x !== 'string' || !k.trim() || x.length > 80))) errors.push('pronounce harus objek { "kata": "cara mengucapkannya" }.');

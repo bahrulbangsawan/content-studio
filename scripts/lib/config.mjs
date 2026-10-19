@@ -12,8 +12,9 @@ export const CONFIG_FILE = join(HOME_DIR, 'config.json');
 export const SETTINGS = {
   'gemini.apiKey': { env: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], secret: true, label: 'Gemini API key: voice over (TTS) dan transkripsi. Buat di https://aistudio.google.com/apikey' },
   'gemini.ttsModel': { def: 'gemini-3.8-flash-tts', label: 'Model TTS. Lebih hemat: gemini-3.8-flash-lite-tts' },
-  'gemini.voice': { def: 'Laomedeia', label: 'Suara bawaan (lihat: content-studio voice list)' },
-  'gemini.style': { def: 'Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation.', label: 'Gaya bicara bawaan (bahasa Inggris paling dipatuhi model)' },
+  'gemini.voicePreset': { def: 'semangat', label: 'Preset suara bawaan untuk reel tanpa preset: semangat atau tenang (lihat: content-studio voice list)' },
+  'gemini.voice': { def: '', label: 'Suara yang menggantikan suara preset (kosong: ikut preset)' },
+  'gemini.style': { def: '', label: 'Gaya bicara yang menggantikan gaya preset (kosong: ikut preset)' },
   'gemini.transcribeModel': { def: 'gemini-3.5-transcribe', label: 'Model transkripsi Gemini' },
   'openai.apiKey': { env: ['OPENAI_API_KEY'], secret: true, label: 'OpenAI API key: transkripsi. Buat di https://platform.openai.com/api-keys' },
   'openai.transcribeModel': { def: 'gpt-transcribe', label: 'Model transkripsi OpenAI (waktu per kata selalu memakai whisper-1)' },

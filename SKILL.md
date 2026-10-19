@@ -296,7 +296,11 @@ node "${CLAUDE_SKILL_DIR}/scripts/cli.mjs" verify <slug> --frames   # opsional: 
 
 **Voice over**
 
-- Tulis naskah yang interaktif dan bersemangat: sapa penonton, tanya lalu jawab, kalimat pendek. Gaya bawaan Gemini sudah antusias, bukan seperti membacakan dongeng.
+- Tulis naskah yang interaktif dan bersemangat: sapa penonton, tanya lalu jawab, kalimat pendek.
+- Nada suara dipilih dengan preset:
+  - `semangat` (bawaan): Laomedeia, antusias, bukan seperti membacakan dongeng.
+  - `tenang`: Sulafat, hangat.
+  - Pasang di `voice.preset` (reel.json) atau `voice` di brand.json untuk semua reel akun. Jangan mengganti nada akun tanpa permintaan pemilik.
 - Istilah bahasa Inggris ditulis dan diucapkan dalam bentuk aslinya. Kata yang tetap terbaca ala Indonesia diberi cara ucap di `voice.pronounce` (reel.json) atau `pronounce` (brand.json, atas persetujuan pemilik).
 - `voice` membuat satu klip per kalimat dalam satu permintaan. Kalimat yang tidak berubah tidak dibuat ulang.
 - Bila ada key transkripsi, waktu setiap kata diukur, jadi teks layar dan subtitle mengikuti suara dengan tepat.

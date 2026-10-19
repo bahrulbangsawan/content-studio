@@ -226,7 +226,7 @@ function newReel() {
   const reel = {
     brand: brandId, slug, title,
     caption: 'TODO: teks posting Instagram, satu sampai tiga kalimat, lalu tagar.',
-    voice: { provider: 'gemini', voice: 'Laomedeia', style: 'Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation.' },
+    voice: { provider: 'gemini', preset: 'semangat' },
     captions: true,
     sources: [{ id: 's1', short: 'TODO: Penulis dkk., tahun', cite: 'TODO: sitasi lengkap. Cari dengan content-studio evidence search', doi: '10.0000/TODO' }],
     scenes: [

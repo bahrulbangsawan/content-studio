@@ -19,6 +19,22 @@ const OAI_BASE = () => process.env.CONTENT_STUDIO_OPENAI_BASE || 'https://api.op
 /* The 30 prebuilt Gemini voices and their character (Gemini speech-generation docs) */
 export const GEMINI_VOICES = [['Zephyr', 'cerah'], ['Puck', 'bersemangat'], ['Charon', 'informatif'], ['Kore', 'tegas'], ['Fenrir', 'antusias'], ['Leda', 'muda'], ['Orus', 'tegas'], ['Aoede', 'ringan'], ['Callirrhoe', 'santai'], ['Autonoe', 'cerah'], ['Enceladus', 'berdesah'], ['Iapetus', 'jernih'], ['Umbriel', 'santai'], ['Algieba', 'halus'], ['Despina', 'halus'], ['Erinome', 'jernih'], ['Algenib', 'serak'], ['Rasalgethi', 'informatif'], ['Laomedeia', 'bersemangat'], ['Achernar', 'lembut'], ['Alnilam', 'tegas'], ['Schedar', 'datar'], ['Gacrux', 'dewasa'], ['Pulcherrima', 'lugas'], ['Achird', 'ramah'], ['Zubenelgenubi', 'kasual'], ['Vindemiatrix', 'lembut'], ['Sadachbia', 'hidup'], ['Sadaltager', 'berpengetahuan'], ['Sulafat', 'hangat']];
 
+/* Named voices for reels: a Gemini voice, a delivery and the model that made it, so a tone the owner likes
+   stays the same from reel to reel. Used as voice.preset in reel.json or brand.json; fields set next to it win. */
+export const VOICE_PRESETS = {
+  semangat: {
+    label: 'Bersemangat dan interaktif, seperti kreator yang ngobrol langsung ke penonton; istilah Inggris dengan lafal asli',
+    voice: 'Laomedeia', model: 'gemini-3.8-flash-tts',
+    style: 'Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation.',
+  },
+  tenang: {
+    label: 'Hangat dan tenang, tempo sedang, untuk topik yang serius',
+    voice: 'Sulafat', model: 'gemini-3.8-flash-tts',
+    style: 'Warm and calm, like a physiotherapist explaining to parents; moderate pace. Say English words and names with native English pronunciation.',
+  },
+};
+export const DEFAULT_VOICE_PRESET = 'semangat';
+
 /* ---------------- Text to speech ---------------- */
 function toWav(b64, mime, rate) {
   const raw = Buffer.from(b64, 'base64');
