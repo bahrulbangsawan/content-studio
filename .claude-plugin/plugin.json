@@ -1,7 +1,7 @@
 {
   "name": "content-studio",
-  "version": "1.0.1",
-  "description": "Studio carousel Instagram dengan design system akun yang dikunci: slide bergambar, pemeriksaan otomatis, alternatif cover dan penutup, unduhan PNG dan MP4.",
+  "version": "1.1.0",
+  "description": "Carousel dan Reels edukasi Instagram dengan design system akun yang dikunci: voice over Gemini, subtitle, footage stok, bukti PubMed, pemeriksaan otomatis, ekspor PNG dan MP4.",
   "author": {
     "name": "Bahrul Bangsawan",
     "url": "https://github.com/bahrulbangsawan"
@@ -10,6 +10,9 @@
   "keywords": [
     "instagram",
     "carousel",
+    "reels",
+    "video",
+    "voice-over",
     "content",
     "design-system",
     "skill"

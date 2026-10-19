@@ -1,6 +1,17 @@
 # Content Studio
 
-Skill Claude untuk membuat konten carousel Instagram (1080 x 1350). Setiap postingan ditulis sebagai satu `post.json`, lalu dibangun menjadi satu halaman studio HTML mandiri. Halaman itu berisi:
+Skill Claude dan CLI untuk membuat konten edukasi Instagram dalam dua format:
+
+- **Carousel** 1080 x 1350, ditulis sebagai `post.json`.
+- **Reels**, video penjelasan 9:16 (1080 x 1920), ditulis sebagai `reel.json`. Berisi:
+  - adegan yang dirancang untuk layar tegak, bukan slide yang direntangkan
+  - voice over Gemini 3.8 Flash TTS
+  - subtitle yang menyorot kata yang sedang diucapkan
+  - ilustrasi dan angka bergerak
+  - footage stok dari Magnific atau Pexels
+  - sumber ilmiah yang diverifikasi di PubMed dan Crossref
+
+Setiap postingan dibangun menjadi satu halaman studio HTML mandiri. Untuk carousel, halaman itu berisi:
 
 - pratinjau slide yang bisa digeser, lengkap dengan animasi
 - ilustrasi dan foto
@@ -8,6 +19,15 @@ Skill Claude untuk membuat konten carousel Instagram (1080 x 1350). Setiap posti
 - pilihan alternatif cover dan penutup
 - panduan desain
 - unduhan PNG, MP4, dan ZIP
+
+Studio Reels berisi:
+
+- pemutar dengan suara dan garis waktu per adegan
+- pilihan pembuka dan penutup
+- zona aman Instagram
+- pemeriksaan otomatis
+- daftar sumber dan kredit footage
+- unduhan MP4 bersuara, cover, PNG per adegan, SRT, dan caption
 
 Tampilan, warna, tipografi, dan gerak dikunci di engine dan di akun brand; yang ditulis hanya isinya.
 
@@ -18,6 +38,7 @@ Isinya:
   - 13 tata letak penutup
 - 49 ilustrasi
 - 20 preset gerak
+- 16 jenis adegan Reels dengan 33 varian, 6 transisi, dan 20 preset gerak per bagian
 - dukungan foto dan video
 - katalog semua komponen dalam warna akun
 
@@ -73,12 +94,51 @@ Berkas tidak tersimpan antar percakapan di Claude Desktop. Di akhir sesi, minta 
 
 Untuk organisasi Team atau Enterprise, pemilik organisasi bisa menambahkan repo ini dari Organization settings, Plugins & skills. Dengan cara ini anggota tidak perlu memasang sendiri.
 
+### Perintah `content-studio` di terminal
+
+Semua fitur juga bisa dipakai langsung dari terminal, tanpa Claude:
+
+```bash
+npm i -g github:bahrulbangsawan/content-studio    # memasang perintah content-studio (Node 18+)
+content-studio setup                              # simpan API key sekali
+content-studio doctor --online                    # cek Chrome, ffmpeg, dan key
+content-studio help                               # semua perintah
+```
+
+Tanpa memasang global, perintah yang sama bisa dijalankan dengan `node ~/.claude/skills/content-studio/scripts/cli.mjs <perintah>`, atau dari folder plugin.
+
+| Perintah | Fungsi |
+| --- | --- |
+| `ig <link>` | Unduh foto, video, dan caption postingan Instagram |
+| `transcribe <video, folder, atau link>` | Video ke teks, SRT, dan waktu per kata (OpenAI atau Gemini) |
+| `evidence search "<topik>"`, `cite`, `verify` | Cari tinjauan sistematis di PubMed, buat entri sumber, cek sumber |
+| `footage search "<kata kunci>"`, `get` | Footage dan foto stok tegak dari Magnific atau Pexels, dengan lembar kontak dan kredit |
+| `new <slug> --reel`, `voice <slug>` | Reel baru, voice over Gemini per adegan |
+| `scan`, `build`, `verify`, `check <slug>` | Aturan isi, halaman studio, cek tata letak di Chrome |
+| `export <slug>` | MP4, cover, SRT, dan caption ke `posts/<slug>/export/` |
+
+### API key
+
+Semuanya opsional. Fitur tanpa key tetap jalan.
+
+| Key | Untuk | Dari |
+| --- | --- | --- |
+| Gemini | Voice over dan transkripsi | https://aistudio.google.com/apikey |
+| OpenAI | Transkripsi dan waktu per kata | https://platform.openai.com/api-keys |
+| Magnific (dulu Freepik) | Footage dan foto stok. API butuh paket berbayar | https://www.magnific.com/user/organization/api-keys |
+| Pexels | Footage dan foto gratis | https://www.pexels.com/api/ |
+| Email untuk PubMed | Opsional | Email sendiri |
+
+`content-studio setup` menyimpannya di `~/.content-studio/config.json`, yang hanya bisa dibaca akunmu dan tidak pernah masuk proyek atau repo. Variabel lingkungan juga dibaca: `GEMINI_API_KEY`, `OPENAI_API_KEY`, `MAGNIFIC_API_KEY`, dan `PEXELS_API_KEY`. Jangan menempelkan key ke percakapan dengan Claude.
+
+**MCP Magnific.** `content-studio footage mcp` memasang MCP resmi Magnific (`https://mcp.magnific.com`, masuk lewat OAuth) di Claude Code. MCP ini membuat gambar, video, dan suara dengan AI memakai kredit akun Magnific. Pencarian footage stok tetap lewat `footage search`, karena MCP itu tidak punya alat stok. Di Claude Desktop, tambahkan sebagai custom connector dengan URL yang sama.
+
 ## Kebutuhan
 
 - **Node 18 atau lebih baru.** Semua skrip berjalan tanpa dependensi npm.
 - **Chrome, Chromium, atau Edge** untuk verifikasi, gerbang komponen, dan pratinjau PNG. Chromium dari Playwright juga terdeteksi. Set `CHROME_PATH` bila browser tidak ditemukan.
 - **Python 3 dan uv (opsional)**, hanya untuk `scripts/ref.mjs`, yang mengambil bahan dari link Instagram. gallery-dl dipasang otomatis ke `~/.content-studio/gallery-dl`.
-- **ffmpeg (opsional)**, untuk memecah video referensi menjadi frame.
+- **ffmpeg (opsional)**, untuk memecah video referensi menjadi frame, mengambil suara untuk transkripsi, dan memotong footage.
 
 Font Inter, ikon Tabler, dan mp4-muxer disertakan dengan lisensinya masing-masing; lihat [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 

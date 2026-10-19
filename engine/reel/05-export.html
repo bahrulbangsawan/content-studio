@@ -1,0 +1,334 @@
+<script>
+(() => {
+  'use strict';
+  /* ================= Ekspor MP4, PNG, SRT, dan caption =================
+     Setiap frame: isi .rf disalin dengan pose saat itu, digambar lewat SVG foreignObject ke kanvas 1080 x 1920.
+     Video dikodekan di browser (WebCodecs), suara dicampur di OfflineAudioContext lalu dikodekan AAC,
+     keduanya dikemas ke MP4 oleh mp4-muxer. */
+  const C = window.__reelCore, DATA = C.DATA, SC = C.SC, REG = C.REG;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const FPS = 30, CW = 1080, CH = 1920;
+  const fail = code => Object.assign(new Error(code), { code });
+  const rf = $('#rf'), xs = new XMLSerializer();
+  const BASE = DATA.brand.handle + '-' + DATA.reel.slug;
+  let cancelled = false;
+
+  let exportCss = '';
+  function getExportCss() {
+    if (!exportCss) {
+      exportCss = $('#fontCss').textContent +
+        ':root{--font:' + getComputedStyle(document.documentElement).getPropertyValue('--font') + ';--t:1}' +
+        $('#brandCss').textContent + $('#reelCss').textContent +
+        '*{box-sizing:border-box}*,*::before,*::after{animation:none!important;transition:none!important}.guide{display:none!important}';
+    }
+    return exportCss;
+  }
+  function flatTransform(cs) {
+    const parts = [];
+    if (cs.translate && cs.translate !== 'none') parts.push(`translate(${cs.translate.trim().split(/\s+/).slice(0, 2).join(', ')})`);
+    if (cs.rotate && cs.rotate !== 'none' && /^-?[\d.]+(deg|rad|turn|grad)$/.test(cs.rotate.trim())) parts.push(`rotate(${cs.rotate.trim()})`);
+    if (cs.scale && cs.scale !== 'none') parts.push(`scale(${cs.scale.trim().split(/\s+/).slice(0, 2).join(', ')})`);
+    if (cs.transform && cs.transform !== 'none') parts.push(cs.transform);
+    return parts.length ? parts.join(' ') : 'none';
+  }
+
+  /* Foto dan frame video saat t menjadi JPEG data: URL (foreignObject hanya memuat gambar data:) */
+  const SNAP = new Map();
+  function snapOf(el) {
+    const w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight;
+    if (!w || !h) return '';
+    const k = Math.min(1, 1920 / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    try { c.getContext('2d').drawImage(el, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.88); }
+    catch (e) { console.warn('[media] frame gagal digambar', e); return ''; }
+  }
+  const once = (el, ev, ms) => new Promise(r => { const t = setTimeout(r, ms); el.addEventListener(ev, () => { clearTimeout(t); r(); }, { once: true }); });
+  async function seekTo(v, sec) {
+    if (v.readyState < 1) await once(v, 'loadedmetadata', 3000);
+    if (!v.duration) return;
+    const target = Math.max(0, Math.min(sec, v.duration - 0.04));
+    if (Math.abs(v.currentTime - target) < 0.004 && v.readyState >= 2) return;
+    const p = once(v, 'seeked', 2500);
+    v.currentTime = target;
+    await p;
+  }
+  async function prepMedia() {
+    for (const R of REG) {
+      if (!R.vis) continue;
+      for (const el of $$('.md-el', R.sec)) {
+        if (el.tagName === 'VIDEO') {
+          el.pause();
+          await seekTo(el, C.mediaTime(el, R.tau));
+          SNAP.set(el, { src: el.src, url: snapOf(el) });
+        } else if (!SNAP.has(el) || SNAP.get(el).src !== el.src) {
+          if (!el.complete) await once(el, 'load', 4000);
+          SNAP.set(el, { src: el.src, url: snapOf(el) });
+        }
+      }
+    }
+  }
+  function frameMarkup() {
+    const host = document.createElement('div');
+    host.className = 'rf';
+    host.setAttribute('style', 'position:relative;width:1080px;height:1920px;overflow:hidden;transform:none;background:#000');
+    for (const child of Array.from(rf.children)) {
+      if (child.hidden || child.classList.contains('guide')) continue;
+      const clone = child.cloneNode(true);
+      /* Gerak berulang ilustrasi berasal dari animasi CSS: posenya dibekukan ke gaya sebaris */
+      const A = $$('.ill *', child), B = $$('.ill *', clone);
+      for (let k = 0; k < A.length; k++) {
+        const cs = getComputedStyle(A[k]), st = B[k].style;
+        st.setProperty('transform', flatTransform(cs), 'important');
+        st.setProperty('translate', 'none', 'important'); st.setProperty('rotate', 'none', 'important'); st.setProperty('scale', 'none', 'important');
+        st.setProperty('opacity', cs.opacity, 'important');
+        if (A[k] instanceof SVGElement) st.setProperty('stroke-dashoffset', cs.strokeDashoffset, 'important');
+      }
+      $$('[hidden]', clone).forEach(e => e.remove());
+      const MA = $$('.md-el', child), MB = $$('.md-el', clone);
+      MA.forEach((a, k) => {
+        const s = SNAP.get(a), b = MB[k];
+        if (!s || !s.url) { b.remove(); return; }
+        const img = document.createElement('img');
+        img.className = b.getAttribute('class') || '';
+        img.setAttribute('style', b.getAttribute('style') || '');
+        img.setAttribute('alt', '');
+        img.src = s.url;
+        b.replaceWith(img);
+      });
+      host.appendChild(clone);
+    }
+    const style = document.createElement('style');
+    style.textContent = getExportCss();
+    const wrap = document.createElement('div');
+    wrap.append(style, host);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><foreignObject x="0" y="0" width="1080" height="1920">' + xs.serializeToString(wrap) + '</foreignObject></svg>';
+  }
+  function paint(ctx, markup) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { try { ctx.clearRect(0, 0, CW, CH); ctx.drawImage(img, 0, 0, CW, CH); resolve(); } catch (e) { reject(fail('render')); } };
+      img.onerror = () => reject(fail('render'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+    });
+  }
+  function newCanvas() { const c = document.createElement('canvas'); c.width = CW; c.height = CH; return c; }
+  const toBlob = (c, type = 'image/png') => new Promise((res, rej) => { try { c.toBlob(b => (b ? res(b) : rej(fail('render'))), type); } catch (e) { rej(fail('render')); } });
+  async function still(i, tau) {
+    C.showOnly(i, tau ?? SC[i].settle);
+    await prepMedia();
+    const c = newCanvas();
+    await paint(c.getContext('2d'), frameMarkup());
+    return c;
+  }
+  async function frameAt(t) {
+    C.render(t);
+    await prepMedia();
+    const c = newCanvas();
+    await paint(c.getContext('2d'), frameMarkup());
+    return c;
+  }
+
+  /* ZIP tanpa kompresi untuk PNG */
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function makeZip(files) {
+    const te = new TextEncoder(), parts = [], central = [];
+    let offset = 0;
+    files.forEach(f => {
+      const name = te.encode(f.name), crc = crc32(f.data), size = f.data.length;
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true);
+      parts.push(lh.buffer, name, f.data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+      central.push(ch.buffer, name);
+      offset += 30 + name.length + size;
+    });
+    const cd = central.reduce((n, p) => n + p.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
+  }
+
+  /* ---------- Video dengan suara ---------- */
+  async function pickCodec() {
+    for (const [codec, mux] of [['avc1.640028', 'avc'], ['avc1.4d0028', 'avc'], ['avc1.640033', 'avc'], ['vp09.00.40.08', 'vp9']]) {
+      try { if ((await VideoEncoder.isConfigSupported({ codec, width: CW, height: CH, bitrate: 10e6, framerate: FPS })).supported) return { codec, mux }; } catch (e) { /* berikutnya */ }
+    }
+    return null;
+  }
+  async function mixAudio(total) {
+    const plan = C.audioPlan();
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if ((!plan.length && !DATA.music) || !OAC) return null;
+    await C.audioRaw;
+    const oc = new OAC(2, Math.ceil(total * 48000), 48000), bufs = new Map();
+    await C.decodeAll(oc, bufs);
+    if (!bufs.size) return null;
+    C.scheduleInto(oc, oc.destination, plan, 0, 0, bufs);
+    return oc.startRendering();
+  }
+  async function encodeMp4(onProgress) {
+    const M = window.Mp4Muxer;
+    if (!M || !('VideoEncoder' in window)) throw fail('codec');
+    const pick = await pickCodec();
+    if (!pick) throw fail('codec');
+    const { total } = C.plan(), nF = Math.ceil(total * FPS);
+    onProgress('Mencampur suara', 0);
+    const mix = await mixAudio(total);
+    let ac = null;
+    if (mix && 'AudioEncoder' in window) {
+      for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+        try { if ((await AudioEncoder.isConfigSupported({ codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 })).supported) { ac = { codec, mux }; break; } } catch (e) { /* berikutnya */ }
+      }
+    }
+    const muxer = new M.Muxer({ target: new M.ArrayBufferTarget(), video: { codec: pick.mux, width: CW, height: CH, frameRate: FPS }, ...(ac ? { audio: { codec: ac.mux, numberOfChannels: 2, sampleRate: 48000 } } : {}), fastStart: 'in-memory', firstTimestampBehavior: 'offset' });
+    let err = null;
+    if (ac) {
+      const aenc = new AudioEncoder({ output: (ch, meta) => muxer.addAudioChunk(ch, meta), error: e => { err = e; } });
+      aenc.configure({ codec: ac.codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 });
+      const L = mix.getChannelData(0), R = mix.numberOfChannels > 1 ? mix.getChannelData(1) : L;
+      for (let off = 0; off < mix.length; off += 4800) {
+        const n = Math.min(4800, mix.length - off), data = new Float32Array(n * 2);
+        data.set(L.subarray(off, off + n), 0); data.set(R.subarray(off, off + n), n);
+        const ad = new AudioData({ format: 'f32-planar', sampleRate: 48000, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(off / 48000 * 1e6), data });
+        aenc.encode(ad); ad.close();
+      }
+      await aenc.flush(); aenc.close();
+      if (err) throw fail('codec');
+    }
+    const venc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { err = e; } });
+    const cfg = { codec: pick.codec, width: CW, height: CH, bitrate: 10e6, framerate: FPS };
+    if (pick.mux === 'avc') cfg.avc = { format: 'avc' };
+    venc.configure(cfg);
+    const cv = newCanvas(), ctx = cv.getContext('2d');
+    try {
+      for (let f = 0; f < nF; f++) {
+        if (cancelled) throw fail('cancel');
+        if (err) throw fail('codec');
+        C.render(f / FPS);
+        await prepMedia();
+        await paint(ctx, frameMarkup());
+        const vf = new VideoFrame(cv, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+        venc.encode(vf, { keyFrame: f % (FPS * 2) === 0 });
+        vf.close();
+        onProgress(`Frame ${(f + 1).toLocaleString('id-ID')} dari ${nF.toLocaleString('id-ID')}`, (f + 1) / nF);
+        while (venc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+      }
+      await venc.flush();
+      if (err) throw fail('codec');
+      muxer.finalize();
+      return { blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }), audio: !!ac, total };
+    } finally { try { venc.close(); } catch (e) { /* tertutup */ } }
+  }
+
+  /* ---------- Subtitle dan caption ---------- */
+  const srtT = s => { const ms = Math.max(0, Math.round(s * 1000)), p = (n, l = 2) => String(n).padStart(l, '0'); return `${p(Math.floor(ms / 3600000))}:${p(Math.floor(ms / 60000) % 60)}:${p(Math.floor(ms / 1000) % 60)},${p(ms % 1000, 3)}`; };
+  function srt() {
+    const { seq, starts } = C.plan();
+    const out = [];
+    seq.forEach((i, k) => SC[i].caps.forEach(c => out.push(`${out.length + 1}\n${srtT(starts[k] + c.s)} --> ${srtT(starts[k] + c.e)}\n${c.words.map(w => w.w).join(' ')}\n`)));
+    return out.join('\n');
+  }
+  function captionText() {
+    const parts = [DATA.caption || DATA.reel.title];
+    if (DATA.sources.length) parts.push('Sumber:\n' + DATA.sources.map(s => `${s.cite || s.short}${s.link ? ' ' + s.link : ''}`).join('\n'));
+    /* Credits for the footage this cut actually shows (the chosen hook and closing) */
+    const { seq } = C.plan(), credits = [...new Set(seq.flatMap(i => SC[i].credits || []))];
+    if (credits.length) parts.push(credits.join('\n'));
+    if (DATA.disclaimer) parts.push(DATA.disclaimer);
+    return parts.join('\n\n') + '\n';
+  }
+
+  /* ---------- Antarmuka unduh ---------- */
+  const dlPop = $('#dlPop'), btnDl = $('#btnDl'), dlStatus = $('#dlStatus'), dlMsg = $('#dlMsg'), dlBar = $('#dlBar'), dlNote = $('#dlNote');
+  const canVideo = 'VideoEncoder' in window && 'VideoFrame' in window;
+  const ERR = {
+    cancel: 'Ekspor dibatalkan.', declined: 'Unduhan dibatalkan, file tidak disimpan.',
+    codec: 'Browser ini tidak bisa membuat video MP4. Coba di Chrome, Edge, atau jalankan: content-studio export <slug>.',
+    render: 'Browser ini tidak mengizinkan adegan diubah menjadi gambar. Coba di Chrome atau Edge.',
+  };
+  let downloads = {
+    save: async ({ filename, data }) => {
+      const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      return { status: 'saved' };
+    },
+  };
+  if (window.claude && typeof window.claude.use === 'function') window.claude.use('downloads').then(d => { if (d) downloads = d; }).catch(() => {});
+  function setPop(open) { dlPop.hidden = !open; btnDl.setAttribute('aria-expanded', String(open)); if (open) syncDl(); }
+  function syncDl() {
+    const { total } = C.plan(), hasVo = C.audioPlan().length > 0;
+    $('#dlMp4Note').textContent = canVideo ? `1080 x 1920, 30 fps, ${C.secs(total)}${hasVo ? ', dengan suara' : ', tanpa suara (belum ada voice over)'}` : 'Butuh Chrome atau Edge, atau content-studio export';
+    $$('.dl-vid').forEach(b => { b.disabled = !canVideo; });
+  }
+  const progress = (msg, frac) => { dlMsg.textContent = msg; dlBar.style.transform = `scaleX(${Math.min(1, frac).toFixed(4)})`; };
+  function note(kind, msg) { dlNote.className = 'dl-note ' + kind; dlNote.textContent = msg; dlNote.hidden = false; }
+  let busy = false;
+  async function withExport(job) {
+    busy = true; cancelled = false;
+    const keep = C.state.t;
+    C.pause();
+    try { await C.mediaReady; return await job(); }
+    finally { busy = false; C.render(keep); }
+  }
+  async function run(kind) {
+    if (busy) return;
+    dlNote.hidden = true; dlStatus.hidden = false; progress('Menyiapkan', 0);
+    $$('.dl-item').forEach(b => { b.disabled = true; });
+    try {
+      const { seq } = C.plan();
+      const out = await withExport(async () => {
+        if (kind === 'mp4') { const r = await encodeMp4(progress); return { name: `${BASE}.mp4`, data: r.blob }; }
+        if (kind === 'cover') { progress('Menggambar cover', 0.5); return { name: `${BASE}-cover.png`, data: await toBlob(await still(seq[0])) }; }
+        if (kind === 'png') {
+          const files = [];
+          for (let k = 0; k < seq.length; k++) {
+            if (cancelled) throw fail('cancel');
+            progress(`Adegan ${k + 1} dari ${seq.length}`, (k + 1) / seq.length);
+            const b = await toBlob(await still(seq[k]));
+            files.push({ name: `${BASE}-${k + 1}-${SC[seq[k]].slug}.png`, data: new Uint8Array(await b.arrayBuffer()) });
+          }
+          return { name: `${BASE}-png.zip`, data: makeZip(files) };
+        }
+        if (kind === 'srt') return { name: `${BASE}.srt`, data: new Blob([srt()], { type: 'text/plain' }) };
+        return { name: `${BASE}-caption.txt`, data: new Blob([captionText()], { type: 'text/plain' }) };
+      });
+      progress('Menunggu konfirmasi simpan', 1);
+      const res = await downloads.save({ filename: out.name, data: out.data });
+      note('ok', res && res.status === 'delivered' ? `${out.name} sudah dikirim.` : `${out.name} tersimpan.`);
+    } catch (e) {
+      const code = (e && e.code) || '';
+      if (code !== 'cancel') console.warn('[ekspor]', e);
+      note(code === 'cancel' || code === 'declined' ? '' : 'bad', ERR[code] || 'Ekspor gagal. Coba lagi, atau pakai content-studio export.');
+    } finally {
+      dlStatus.hidden = true;
+      $$('.dl-item').forEach(b => { b.disabled = false; });
+      syncDl();
+    }
+  }
+  btnDl.addEventListener('click', () => setPop(dlPop.hidden));
+  $$('.dl-item').forEach(b => b.addEventListener('click', () => run(b.dataset.x)));
+  $('#dlCancel').addEventListener('click', () => { cancelled = true; progress('Membatalkan', 1); });
+  document.addEventListener('pointerdown', e => { if (!dlPop.hidden && !busy && !$('#dl').contains(e.target)) setPop(false); });
+
+  /* ---------- Kait untuk reel.mjs verify dan content-studio export ---------- */
+  const dataUrl = blob => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+  let outBlob = null;
+  window.__reel = {
+    ready: false,
+    info: () => { const { seq, total } = C.plan(); return { total, seq: seq.map(i => SC[i].name), hooks: DATA.seq.hooks.length, closings: DATA.seq.closings.length, audio: C.audioPlan().length }; },
+    report: () => C.runChecks(),
+    renderPng: (i, tau) => withExport(async () => dataUrl(await toBlob(await still(i, tau)))),
+    renderAt: t => withExport(async () => dataUrl(await toBlob(await frameAt(t)))),
+    setHook: k => C.setAlt('hook', k),
+    setClose: k => C.setAlt('close', k),
+    exportMp4: () => withExport(async () => { const r = await encodeMp4(() => {}); outBlob = r.blob; return { size: r.blob.size, audio: r.audio, total: r.total }; }),
+    chunk: (off, len) => dataUrl(outBlob.slice(off, off + len)).then(u => u.split(',')[1] || ''),
+    srt, caption: captionText,
+  };
+  Promise.all([C.mediaReady, document.fonts ? document.fonts.ready : null, C.audioRaw]).then(() => { window.__reel.ready = true; });
+})();
+</script>

@@ -1,0 +1,102 @@
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13 -8z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 5h4v14h-4z"/><path d="M14 5h4v14h-4z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M15 6l-6 6l6 6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol>
+  <symbol id="i-cc" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/><path d="M10 10.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0"/><path d="M17 10.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0"/></symbol>
+  <symbol id="i-zone" viewBox="0 0 24 24"><path d="M4 4h16v16h-16z"/><path d="M4 8h16"/><path d="M4 16h16"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/><path d="M16 10l4 4m0 -4l-4 4"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+  <symbol id="i-photo" viewBox="0 0 24 24"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></symbol>
+</svg>
+<div class="studio" id="studio">
+  <header class="nav">
+    <div class="lockup">@@NAV_LOCKUP@@<span>@@META@@</span></div>
+    <span class="spacer"></span>
+    <button type="button" class="pill" id="chkPill"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="chkPillT">Pemeriksaan</span></button>
+    <div class="dl" id="dl">
+      <button type="button" class="btn pri" id="btnDl" aria-expanded="false" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Unduh <kbd>D</kbd></button>
+      <div class="dl-pop" id="dlPop" hidden>
+        <button type="button" class="dl-item dl-vid" data-x="mp4"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg><b>Video MP4</b><span id="dlMp4Note">1080 x 1920, 30 fps, dengan suara</span></button>
+        <button type="button" class="dl-item" data-x="cover"><svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg><b>Cover PNG</b><span>Frame pembuka yang sudah lengkap, untuk sampul Reels</span></button>
+        <button type="button" class="dl-item" data-x="png"><svg class="ic" aria-hidden="true"><use href="#i-photo"/></svg><b>Semua adegan PNG</b><span>Satu gambar per adegan, dalam satu .zip</span></button>
+        <button type="button" class="dl-item" data-x="srt"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg><b>Subtitle SRT</b><span>Teks voice over dengan waktunya</span></button>
+        <button type="button" class="dl-item" data-x="txt"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg><b>Caption Instagram</b><span>Teks posting, sumber, dan kredit footage</span></button>
+        <div class="dl-status" id="dlStatus" hidden><span id="dlMsg"></span><div class="dl-bar"><i id="dlBar"></i></div><button type="button" class="btn" id="dlCancel">Batal</button></div>
+        <div class="dl-note" id="dlNote" hidden></div>
+      </div>
+    </div>
+  </header>
+  <main class="viewer">
+    <div class="stage-wrap">
+      <div class="stage-box" id="stageBox">
+        <div class="stage" id="stage" role="region" aria-label="@@STAGE_LABEL@@">
+          <div class="rf" id="rf">
+@@SCENES@@
+            <div class="ov slide is-light" id="ov">
+              <div class="chrome" id="chrome"><span class="chrome-l"><span class="logo-img lg-l">@@LOGO_LIGHT@@</span><span class="logo-img lg-d">@@LOGO_DARK@@</span>@@HANDLE@@</span><span class="chrome-n" id="chromeN"></span></div>
+              <div class="cap" id="cap"><p class="cap-l" id="capL"></p></div>
+            </div>
+            <div class="guide" id="guide" hidden>
+              <i class="g-ig" style="left: 0; top: 0; width: 1080px; height: 236px"></i>
+              <i class="g-ig" style="left: 0; top: 1460px; width: 1080px; height: 460px"></i>
+              <i class="g-ig" style="left: 948px; top: 980px; width: 132px; height: 480px"></i>
+              <i class="g-line" style="left: 90px; top: 312px; width: 900px; height: 928px"></i>
+              <i class="g-cap" style="left: 160px; top: 1268px; width: 760px; height: 190px"></i>
+              <span class="g-lab" style="left: 24px; top: 180px">Bilah atas Instagram</span>
+              <span class="g-lab" style="left: 24px; top: 1476px">Caption, nama akun, dan audio</span>
+              <span class="g-lab" style="left: 760px; top: 920px">Tombol</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="transport">
+      <div class="t-row">
+        <div class="t-group">
+          <button type="button" class="ibtn" id="btnPrev" aria-label="Adegan sebelumnya"><svg class="ic" aria-hidden="true"><use href="#i-prev"/></svg></button>
+          <button type="button" class="ibtn" id="btnPlay" aria-label="Putar"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
+          <button type="button" class="ibtn" id="btnNext" aria-label="Adegan berikutnya"><svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
+        </div>
+        <span class="t-time" id="tTime">0:00 / 0:00</span>
+        <div class="tl" id="tl" role="slider" tabindex="0" aria-label="Posisi video" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="tl-head" id="tlHead"></span></div>
+        <div class="t-group">
+          <button type="button" class="ibtn" id="btnCap" aria-pressed="true" aria-label="Subtitle"><svg class="ic" aria-hidden="true"><use href="#i-cc"/></svg></button>
+          <button type="button" class="ibtn" id="btnZone" aria-pressed="false" aria-label="Zona aman Instagram"><svg class="ic" aria-hidden="true"><use href="#i-zone"/></svg></button>
+          <button type="button" class="ibtn" id="btnMute" aria-pressed="false" aria-label="Bisukan"><svg class="ic" aria-hidden="true"><use href="#i-vol"/></svg></button>
+          <button type="button" class="ibtn" id="btnLoop" aria-pressed="false" aria-label="Putar berulang"><svg class="ic" aria-hidden="true"><use href="#i-loop"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" role="tab" data-tab="scenes" aria-selected="true">Adegan</button>
+      <button type="button" class="tab" role="tab" data-tab="checks" aria-selected="false">Pemeriksaan</button>
+      <button type="button" class="tab" role="tab" data-tab="sources" aria-selected="false">Sumber</button>
+      <button type="button" class="tab" role="tab" data-tab="guide" aria-selected="false">Panduan</button>
+    </div>
+    <div class="pane" data-pane="scenes">
+      <div class="sec" id="secHooks" hidden><h3>Pilihan pembuka</h3><div class="alts" id="altHooks"></div></div>
+      <div class="sec" id="secCloses" hidden><h3>Pilihan penutup</h3><div class="alts" id="altCloses"></div></div>
+      <div class="sec"><h3>Adegan</h3><div class="list" id="scnList"></div></div>
+      <div class="sec"><h3>Suara</h3><p class="note" id="voiceNote"></p></div>
+    </div>
+    <div class="pane" data-pane="checks" hidden>
+      <div class="sec"><h3>Pemeriksaan di halaman</h3><ul class="list" id="chkList"></ul></div>
+      <div class="sec"><h3>Saat build</h3><ul class="list" id="scanList"></ul></div>
+    </div>
+    <div class="pane" data-pane="sources" hidden>
+      <div class="sec"><h3>Sumber ilmiah</h3><div class="list" id="srcList"></div></div>
+      <div class="sec"><h3>Kredit footage dan foto</h3><div class="list" id="creditList"></div></div>
+    </div>
+    <div class="pane" data-pane="guide" hidden>@@GUIDE@@</div>
+  </aside>
+</div>

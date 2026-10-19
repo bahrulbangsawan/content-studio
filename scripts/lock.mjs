@@ -8,7 +8,7 @@ import { SKILL_DIR, ENGINE_DIR, listFiles, sha256 } from './lib/common.mjs';
 
 export function engineFiles() {
   const files = [];
-  for (const sub of ['parts', 'fonts', 'vendor']) files.push(...listFiles(join(ENGINE_DIR, sub)).map(f => `engine/${sub}/${f}`));
+  for (const sub of ['parts', 'reel', 'fonts', 'vendor']) files.push(...listFiles(join(ENGINE_DIR, sub)).map(f => `engine/${sub}/${f}`));
   files.push('engine/icons.json');
   files.push(...listFiles(join(SKILL_DIR, 'scripts')).filter(f => f.endsWith('.mjs')).map(f => `scripts/${f}`));
   return files.sort();

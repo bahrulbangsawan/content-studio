@@ -10,7 +10,7 @@ import { SKILL_DIR, listFiles, parseArgs, fail } from './lib/common.mjs';
 import { zip } from './lib/zip.mjs';
 
 const NAME = 'content-studio';
-export const SHORT_DESCRIPTION = 'Studio carousel Instagram: tulis isi post.json, bangun halaman HTML berisi slide bergambar, pemeriksaan otomatis, dan unduhan PNG atau MP4. Untuk konten carousel dan slide edukasi.';
+export const SHORT_DESCRIPTION = 'Carousel dan Reels edukasi Instagram: slide dan video 9:16 bergambar dengan voice over, subtitle, sumber ilmiah, pemeriksaan otomatis, dan unduhan PNG atau MP4.';
 
 const args = parseArgs();
 const out = resolve(args.out || join(SKILL_DIR, 'dist', `${NAME}.zip`));

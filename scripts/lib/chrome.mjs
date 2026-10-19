@@ -73,8 +73,8 @@ export async function launch(chromePath, { width = 1440, height = 900 } = {}) {
   });
   /* Page commands. The reply keeps the { result } shape the callers read. */
   const send = (method, params = {}) => raw(method, params, session);
-  async function evalJs(expression) {
-    const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout: 120000 });
+  async function evalJs(expression, timeout = 120000) {
+    const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout });
     if (r.error) throw new Error(r.error.message);
     if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text);
     return r.result.result.value;
@@ -83,7 +83,8 @@ export async function launch(chromePath, { width = 1440, height = 900 } = {}) {
     try { if (!exited) await Promise.race([raw('Browser.close'), sleep(1500)]); } catch (e) { /* closed */ }
     chrome.kill();
     await sleep(300);
-    rmSync(profile, { recursive: true, force: true });
+    /* Chrome may still be flushing its profile for a moment after it exits */
+    try { rmSync(profile, { recursive: true, force: true, maxRetries: 8, retryDelay: 150 }); } catch (e) { /* left in the temp folder */ }
   }
   try {
     let page = null;

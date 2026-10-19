@@ -1,0 +1,607 @@
+<script>
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  /* Data reel dan akun disisipkan oleh reel.mjs build. Halaman ini tidak pernah mengubahnya. */
+  const DATA = JSON.parse($('#reelData').textContent);
+  const SC = DATA.scenes, W = 1080, H = 1920, LANG = DATA.lang || 'id';
+  const KEY = 'content-studio:reel:' + DATA.brand.id + ':' + DATA.reel.slug;
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  const pick = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
+  const state = {
+    t: 0, playing: false, captions: saved.captions !== false, zones: !!saved.zones, muted: !!saved.muted, loop: !!saved.loop,
+    hook: pick(saved.hook, DATA.seq.hooks.length), close: pick(saved.close, DATA.seq.closings.length), tab: saved.tab || 'scenes',
+  };
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify({ captions: state.captions, zones: state.zones, muted: state.muted, loop: state.loop, hook: state.hook, close: state.close, tab: state.tab })); } catch (e) { /* penyimpanan tidak tersedia */ }
+  }
+  const fmtT = s => { s = Math.max(0, s); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; };
+  const secs = s => s.toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' dtk';
+
+  /* ---------- Gerak: setiap preset punya panjang bawaan dan pose pada kemajuan p (0 belum, 1 selesai) ---------- */
+  const E = {
+    out: p => 1 - Math.pow(1 - p, 3),
+    out5: p => 1 - Math.pow(1 - p, 5),
+    inout: p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2),
+    back: p => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); },
+    expo: p => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p)),
+  };
+  const P = {
+    rise: [0.55, p => ({ o: clamp(p * 1.8), y: (1 - E.out(p)) * 56 })],
+    fade: [0.45, p => ({ o: E.out(p) })],
+    pop: [0.55, p => ({ o: clamp(p * 2.4), s: 0.5 + 0.5 * E.back(p) })],
+    slam: [0.34, p => ({ o: clamp(p * 3), s: 1.35 - 0.35 * E.out(p) })],
+    word: [0.32, p => ({ o: clamp(p * 2.6), y: (1 - E.out(p)) * 30 })],
+    left: [0.5, p => ({ o: clamp(p * 1.8), x: -(1 - E.out(p)) * 80 })],
+    right: [0.5, p => ({ o: clamp(p * 1.8), x: (1 - E.out(p)) * 80 })],
+    up: [0.7, p => ({ o: clamp(p * 3), y: (1 - E.expo(p)) * 360 })],
+    zoomIn: [0.9, p => ({ o: clamp(p * 2.2), s: 1.08 - 0.08 * E.out(p) })],
+    wipe: [0.6, p => ({ clip: `inset(0 ${((1 - E.inout(p)) * 100).toFixed(2)}% 0 0)` })],
+    wipeUp: [0.65, p => ({ clip: `inset(${((1 - E.inout(p)) * 100).toFixed(2)}% 0 0 0)` })],
+    draw: [0.6, p => ({ dash: 1 - E.inout(p) })],
+    grow: [0.55, p => ({ sx: E.out(p) })],
+    mark: [0.42, p => ({ bg: E.inout(p) * 100 })],
+    stamp: [0.42, p => ({ o: clamp(p * 3), s: 1.8 - 0.8 * E.back(p), r: -14 + 8 * E.out(p) })],
+    flipIn: [0.3, p => ({ o: p > 0 ? 1 : 0, sx: E.out(p) })],
+    count: [1.1, null],
+  };
+  const TF = new Set(['rise', 'pop', 'slam', 'word', 'left', 'right', 'up', 'zoomIn', 'grow', 'stamp', 'flipIn']);
+
+  function fmtNum(v, c) {
+    const fixed = v.toFixed(c.dec);
+    let [w, f] = fixed.split('.');
+    if (c.sep) w = w.replace(/\B(?=(\d{3})+(?!\d))/g, LANG === 'en' ? ',' : '.');
+    return c.pre + w + (f ? (LANG === 'en' ? '.' : ',') + f : '') + c.suf;
+  }
+
+  /* ---------- Adegan ---------- */
+  const rf = $('#rf'), ov = $('#ov'), chrome = $('#chrome'), chromeN = $('#chromeN'), capL = $('#capL'), guide = $('#guide');
+  const secEls = $$('.scene', rf);
+  const REG = secEls.map(sec => {
+    const items = [];
+    $$('[data-a],[data-dim],[data-on],[data-out]', sec).forEach(el => {
+      const d = el.dataset;
+      items.push({
+        el, a: d.a || null, t: Number(d.t) || 0, l: d.l ? Number(d.l) : null,
+        dim: d.dim !== undefined ? Number(d.dim) : null, on: d.on !== undefined ? Number(d.on) : null, off: d.off !== undefined ? Number(d.off) : null, out: d.out !== undefined ? Number(d.out) : null,
+        cnt: d.a === 'count' ? { to: Number(d.to) || 0, dec: Number(d.dec) || 0, pre: d.pre || '', suf: d.suf || '', sep: d.sep === '1', last: null } : null,
+        tf: TF.has(d.a) || d.out !== undefined,
+      });
+    });
+    return { sec, items, kb: $$('[data-kb]', sec), vids: $$('video.md-el', sec), ills: $$('.ill', sec).map(ill => ({ t: Number(ill.dataset.t) || 0, paths: $$('.ad-draw', ill) })), anims: null, vis: !sec.hidden, tau: 0, fx: false };
+  });
+
+  function drawScene(i, tau) {
+    const R = REG[i], dur = SC[i].dur;
+    R.tau = tau;
+    for (const d of R.items) {
+      const el = d.el, st = el.style;
+      let o = 1, x = 0, y = 0, s = 1, sx = 1, r = null, clip = null, dash = null, bg = null;
+      if (d.a) {
+        const pr = P[d.a] || P.fade, p = clamp((tau - d.t) / (d.l || pr[0]));
+        if (d.cnt) {
+          const txt = fmtNum(d.cnt.to * E.out5(p), d.cnt);
+          if (txt !== d.cnt.last) { el.textContent = txt; d.cnt.last = txt; }
+          o = clamp(p * 6);
+        } else {
+          const q = pr[1](p);
+          if (q.o !== undefined) o = q.o;
+          if (q.x !== undefined) x = q.x;
+          if (q.y !== undefined) y = q.y;
+          if (q.s !== undefined) s = q.s;
+          if (q.sx !== undefined) sx = q.sx;
+          if (q.r !== undefined) r = q.r;
+          if (q.clip !== undefined) clip = q.clip;
+          if (q.dash !== undefined) dash = q.dash;
+          if (q.bg !== undefined) bg = q.bg;
+        }
+      }
+      if (d.dim !== null) o *= 1 - 0.6 * E.out(clamp((tau - d.dim) / 0.3));
+      if (d.out !== null) { const p = clamp((tau - d.out) / 0.24); sx *= 1 - E.inout(p); if (p >= 1) o = 0; }
+      if (d.on !== null) el.classList.toggle('is-on', tau >= d.on && !(d.off !== null && tau >= d.off));
+      if (dash !== null) st.strokeDashoffset = dash.toFixed(4);
+      if (bg !== null) st.backgroundSize = `${bg.toFixed(2)}% 100%`;
+      if (clip !== null) st.clipPath = clip === 'inset(0 0.00% 0 0)' || clip === 'inset(0.00% 0 0 0)' ? '' : clip;
+      if (d.tf) {
+        const tf = [];
+        if (x || y) tf.push(`translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0px)`);
+        if (s !== 1) tf.push(`scale(${s.toFixed(4)})`);
+        if (sx !== 1) tf.push(`scaleX(${Math.max(0.0001, sx).toFixed(4)})`);
+        if (r !== null) tf.push(`rotate(${r.toFixed(2)}deg)`);
+        st.transform = tf.join(' ');
+      }
+      st.opacity = o < 0.999 ? o.toFixed(3) : '';
+    }
+    /* Foto bergerak pelan sepanjang adegan */
+    const q = clamp(tau / Math.max(1, dur));
+    for (const el of R.kb) {
+      const k = el.dataset.kb, z = k === 'out' ? 1.1 - 0.1 * q : 1 + 0.1 * (k === 'in' ? q : 0.8);
+      const dx = k === 'left' ? 2 - 4 * q : k === 'right' ? -2 + 4 * q : 0;
+      el.style.transform = `translate3d(${dx.toFixed(3)}%, 0px, 0px) scale(${z.toFixed(4)})`;
+    }
+    /* Garis ilustrasi tergambar setelah ilustrasinya masuk */
+    for (const ill of R.ills) {
+      const p = E.inout(clamp((tau - ill.t - 0.25) / 0.9));
+      for (const pth of ill.paths) pth.style.strokeDashoffset = (1 - p).toFixed(4);
+    }
+    /* Gerak berulang ilustrasi (CSS) dijeda lalu digeser ke waktu adegan, jadi sama di layar dan di video */
+    if (!R.anims) {
+      R.anims = R.sec.getAnimations({ subtree: true });
+      R.anims.forEach(a => a.pause());
+    }
+    for (const a of R.anims) { try { a.currentTime = tau * 1000; } catch (e) { /* animasi sudah dibuang */ } }
+  }
+
+  /* Transisi masuk adegan berikutnya, di atas adegan sebelumnya */
+  function trans(ai, bi, p, type) {
+    const a = REG[ai].sec.style, b = REG[bi].sec.style, e = E.inout(p), ex = E.expo(p);
+    a.zIndex = '1'; b.zIndex = '2';
+    a.transform = ''; a.opacity = ''; a.clipPath = ''; b.transform = ''; b.opacity = ''; b.clipPath = '';
+    if (type === 'up') { b.transform = `translate3d(0px, ${((1 - ex) * H).toFixed(1)}px, 0px)`; a.transform = `translate3d(0px, ${(-ex * H * 0.22).toFixed(1)}px, 0px)`; }
+    else if (type === 'slide') { b.transform = `translate3d(${((1 - ex) * W).toFixed(1)}px, 0px, 0px)`; a.transform = `translate3d(${(-ex * W * 0.3).toFixed(1)}px, 0px, 0px)`; }
+    else if (type === 'wipe') b.clipPath = `inset(0 ${((1 - e) * 100).toFixed(2)}% 0 0)`;
+    else if (type === 'circle') b.clipPath = `circle(${(e * 1260).toFixed(1)}px at 50% 42%)`;
+    else if (type === 'zoom') { a.transform = `scale(${(1 + 0.14 * e).toFixed(4)})`; a.opacity = (1 - e).toFixed(3); b.transform = `scale(${(0.9 + 0.1 * E.out(p)).toFixed(4)})`; b.opacity = e.toFixed(3); }
+    else if (type === 'fade') b.opacity = e.toFixed(3);
+    REG[ai].fx = REG[bi].fx = true;
+  }
+  function untrans(i) {
+    const R = REG[i];
+    if (!R.fx) return;
+    Object.assign(R.sec.style, { transform: '', opacity: '', clipPath: '', zIndex: '' });
+    R.fx = false;
+  }
+
+  /* ---------- Urutan: pembuka terpilih, isi, penutup terpilih ---------- */
+  let seq = [], starts = [], total = 0;
+  function plan() {
+    const hk = DATA.seq.hooks, cl = DATA.seq.closings;
+    seq = [hk[state.hook], ...DATA.seq.main, cl[state.close]];
+    starts = [];
+    let t = 0;
+    seq.forEach(i => { starts.push(t); t += SC[i].dur; });
+    total = t;
+  }
+  const kAt = t => { for (let j = 0; j < seq.length; j++) if (t < starts[j] + SC[seq[j]].dur) return j; return seq.length - 1; };
+
+  /* Subtitle: satu baris pendek, kata yang sedang diucapkan bersorot */
+  let capKey = '';
+  function captions(i, tau, show) {
+    const c = show && state.captions && SC[i].captions ? SC[i].caps.find(x => tau >= x.s - 0.04 && tau < x.e) : null;
+    if (!c) { if (capL.firstChild) capL.replaceChildren(); capKey = ''; return; }
+    let now = -1;
+    c.words.forEach((w, k) => { if (tau >= w.s - 0.04) now = k; });
+    const key = c.s + ':' + now;
+    if (key === capKey) return;
+    capKey = key;
+    const plate = document.createElement('span');
+    plate.className = 'cap-in';
+    c.words.forEach((w, k) => {
+      const sp = document.createElement('span');
+      sp.className = 'cw' + (k === now ? ' is-now' : '');
+      sp.textContent = w.w;
+      plate.append(sp, k < c.words.length - 1 ? ' ' : '');
+    });
+    capL.replaceChildren(plate);
+  }
+
+  let lastK = -1;
+  function render(t) {
+    t = clamp(t, 0, Math.max(0, total - 0.001));
+    state.t = t;
+    const k = kAt(t), i = seq[k], tau = t - starts[k], s = SC[i];
+    const tr = k > 0 && s.tr !== 'cut' && tau < s.trLen ? seq[k - 1] : -1;
+    REG.forEach((R, j) => {
+      const v = j === i || j === tr;
+      if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; if (!v) untrans(j); }
+    });
+    drawScene(i, tau);
+    if (tr >= 0) { drawScene(tr, SC[tr].dur + tau); trans(tr, i, tau / s.trLen, s.tr); }
+    else untrans(i);
+    /* Bilah akun hanya di adegan isi tanpa footage penuh; ikut warna adegan */
+    const p = tr >= 0 ? E.inout(tau / s.trLen) : 1;
+    const co = (tr >= 0 ? (SC[tr].chrome ? 1 - p : 0) : 0) + (s.chrome ? p : 0);
+    chrome.style.opacity = co < 0.999 ? co.toFixed(3) : '';
+    chrome.hidden = co <= 0.001;
+    const dark = (tr >= 0 && p < 0.5 ? SC[tr].theme : s.theme) === 'dark';
+    ov.classList.toggle('is-dark', dark);
+    ov.classList.toggle('is-light', !dark);
+    $$('.lg-l', ov).forEach(e => { e.hidden = dark; });
+    $$('.lg-d', ov).forEach(e => { e.hidden = !dark; });
+    chromeN.textContent = k > 0 && k < seq.length - 1 ? `${k}/${seq.length - 2}` : '';
+    captions(i, tau, tr < 0 || tau > s.trLen * 0.6);
+    if (k !== lastK) { lastK = k; onScene(k); }
+    ui();
+  }
+
+  /* ---------- Foto dan video ---------- */
+  const MEDIA = new Map();
+  const mediaTime = (v, tau) => { const d = v.duration || 0, t = (Number(v.dataset.from) || 0) + Math.max(0, tau); return d ? (t > d - 0.05 ? t % d : t) : t; };
+  const mediaReady = Promise.all($$('script.md-src').map(s =>
+    fetch(`data:${s.dataset.mime};base64,${s.textContent.trim()}`).then(r => r.blob()).then(b => { MEDIA.set(s.dataset.id, URL.createObjectURL(b)); }).catch(e => console.warn('[media] berkas gagal dimuat', s.dataset.name, e))
+  )).then(() => {
+    $$('[data-media]').forEach(el => { const u = MEDIA.get(el.dataset.media); if (u) { if (el.tagName === 'VIDEO') el.muted = true; el.src = u; } });
+    return Promise.all($$('[data-media]').map(el => new Promise(r => {
+      if (el.tagName === 'VIDEO' ? el.readyState >= 2 : el.complete) return r();
+      const tm = setTimeout(r, 5000);
+      el.addEventListener(el.tagName === 'VIDEO' ? 'loadeddata' : 'load', () => { clearTimeout(tm); r(); }, { once: true });
+      el.addEventListener('error', () => { clearTimeout(tm); r(); }, { once: true });
+    })));
+  });
+  function syncVideos(playing) {
+    REG.forEach(R => R.vids.forEach(v => {
+      if (!v.getAttribute('src')) return;
+      if (!R.vis) { if (!v.paused) v.pause(); return; }
+      const target = mediaTime(v, R.tau);
+      if (playing) {
+        if (v.paused) v.play().catch(() => {});
+        if (Math.abs(v.currentTime - target) > 0.3) v.currentTime = target;
+      } else {
+        if (!v.paused) v.pause();
+        if (v.readyState >= 1 && Math.abs(v.currentTime - target) > 0.05) v.currentTime = target;
+      }
+    }));
+  }
+
+  /* ---------- Suara: voice over per adegan dan musik, dijadwalkan di Web Audio ---------- */
+  const AU_RAW = new Map();
+  const audioRaw = Promise.all($$('script.au-src').map(s =>
+    fetch(`data:${s.dataset.mime};base64,${s.textContent.trim()}`).then(r => r.arrayBuffer()).then(b => { AU_RAW.set(s.dataset.id, b); }).catch(e => console.warn('[suara] berkas gagal dimuat', e))
+  ));
+  let actx = null, master = null, sources = [], clock0 = 0, t0 = 0, perf0 = 0;
+  const AUD = new Map();
+  async function decodeAll(ctx, into) {
+    await audioRaw;
+    for (const [id, buf] of AU_RAW) {
+      if (into.has(id)) continue;
+      try { into.set(id, await ctx.decodeAudioData(buf.slice(0))); } catch (e) { console.warn('[suara] tidak bisa diputar', id, e); }
+    }
+  }
+  async function ensureAudio() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) throw new Error('no audio');
+      actx = new AC();
+      master = actx.createGain();
+      master.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') await actx.resume();
+    await decodeAll(actx, AUD);
+    master.gain.value = state.muted ? 0 : 1;
+  }
+  /* Rencana suara yang sama dipakai pemutar dan ekspor: [{ id, at (detik di video), gain }] */
+  function audioPlan() {
+    const out = [];
+    seq.forEach((i, k) => { const v = SC[i].vo; if (v && v.id) out.push({ id: v.id, at: starts[k] + v.at, gain: 1 }); });
+    return out;
+  }
+  function scheduleInto(ctx, dest, plan, from, when, bufs) {
+    const list = [];
+    for (const a of plan) {
+      const buf = bufs.get(a.id);
+      if (!buf || a.at + buf.duration <= from) continue;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(dest);
+      if (a.at >= from) src.start(when + (a.at - from)); else src.start(when, from - a.at);
+      list.push(src);
+    }
+    const m = DATA.music && bufs.get(DATA.music.id);
+    if (m) {
+      const g = ctx.createGain(), vol = DATA.music.volume, duck = vol * 0.45;
+      g.connect(dest);
+      const src = ctx.createBufferSource();
+      src.buffer = m; src.loop = true; src.connect(g);
+      g.gain.setValueAtTime(vol, when);
+      for (const a of plan) {
+        const b = bufs.get(a.id);
+        if (!b) continue;
+        const s0 = when + a.at - from, s1 = s0 + b.duration;
+        if (s1 < when) continue;
+        g.gain.setTargetAtTime(duck, Math.max(when, s0 - 0.15), 0.08);
+        g.gain.setTargetAtTime(vol, Math.max(when, s1 + 0.1), 0.3);
+      }
+      g.gain.setTargetAtTime(0, Math.max(when, when + total - from - 1.4), 0.4);
+      src.start(when, from % m.duration);
+      list.push(src);
+    }
+    return list;
+  }
+  function stopSources() { sources.forEach(s => { try { s.stop(); } catch (e) { /* belum mulai */ } }); sources = []; }
+  function schedule(from) {
+    stopSources();
+    if (actx) { clock0 = actx.currentTime + 0.06; sources = scheduleInto(actx, master, audioPlan(), from, clock0, AUD); }
+    perf0 = performance.now() + 60;
+    t0 = from;
+  }
+  const clockNow = () => (actx ? t0 + Math.max(0, actx.currentTime - clock0) : t0 + Math.max(0, performance.now() - perf0) / 1000);
+
+  let raf = 0;
+  async function play() {
+    if (state.playing) return;
+    if (state.t >= total - 0.05) state.t = 0;
+    state.playing = true;
+    try { await ensureAudio(); } catch (e) { actx = null; }
+    schedule(state.t);
+    btnPlay.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>';
+    btnPlay.setAttribute('aria-label', 'Jeda');
+    tick();
+  }
+  function pause() {
+    state.playing = false;
+    stopSources();
+    cancelAnimationFrame(raf);
+    syncVideos(false);
+    btnPlay.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>';
+    btnPlay.setAttribute('aria-label', 'Putar');
+  }
+  function tick() {
+    raf = requestAnimationFrame(() => {
+      if (!state.playing) return;
+      let t = clockNow();
+      if (t >= total) {
+        if (state.loop) { schedule(0); t = 0; } else { render(total); pause(); return; }
+      }
+      render(t);
+      syncVideos(true);
+      tick();
+    });
+  }
+  function seek(t) {
+    state.t = clamp(t, 0, total);
+    if (state.playing) schedule(state.t);
+    render(state.t);
+    syncVideos(state.playing);
+  }
+
+  /* ---------- Antarmuka ---------- */
+  const btnPlay = $('#btnPlay'), tl = $('#tl'), tlHead = $('#tlHead'), tTime = $('#tTime'), stageBox = $('#stageBox');
+  function fit() { rf.style.setProperty('--k', (stageBox.clientWidth / W).toFixed(5)); }
+  new ResizeObserver(fit).observe(stageBox);
+  fit();
+  function buildTimeline() {
+    $$('.tl-seg', tl).forEach(e => e.remove());
+    seq.forEach((i, k) => {
+      const s = SC[i], seg = document.createElement('div');
+      seg.className = 'tl-seg';
+      seg.style.flexGrow = s.dur.toFixed(2);
+      seg.title = `${k + 1}. ${s.name} (${secs(s.dur)})`;
+      if (s.vo && s.vo.dur) {
+        const v = document.createElement('i');
+        v.className = 'vo';
+        v.style.left = (s.vo.at / s.dur * 100).toFixed(1) + '%';
+        v.style.width = (Math.min(s.vo.dur, s.dur - s.vo.at) / s.dur * 100).toFixed(1) + '%';
+        seg.append(v);
+      }
+      const b = document.createElement('b');
+      b.textContent = k + 1;
+      seg.append(b, document.createTextNode(s.name));
+      tl.insertBefore(seg, tlHead);
+    });
+  }
+  function ui() {
+    const segs = $$('.tl-seg', tl);
+    const k = kAt(state.t);
+    segs.forEach((e, j) => e.classList.toggle('is-cur', j === k));
+    tlHead.style.left = total ? (state.t / total * 100).toFixed(3) + '%' : '0';
+    tl.setAttribute('aria-valuenow', total ? Math.round(state.t / total * 100) : 0);
+    tTime.textContent = `${fmtT(state.t)} / ${fmtT(total)}`;
+  }
+  function onScene(k) { $$('.scn', $('#scnList')).forEach((e, j) => e.setAttribute('aria-current', String(j === k))); }
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  function buildList() {
+    const list = $('#scnList');
+    list.replaceChildren();
+    seq.forEach((i, k) => {
+      const s = SC[i], b = el('button', 'scn');
+      b.type = 'button';
+      b.append(el('i', '', String(k + 1)), el('b', '', s.name), el('span', 'd', secs(s.dur)));
+      if (s.voText) b.append(el('span', 'vo-t', s.voText));
+      const tag = el('span', 'tag');
+      [s.label, s.tr && k > 0 ? `transisi ${s.tr}` : '', s.theme === 'dark' ? 'gelap' : 'terang', ...(s.tags || [])].filter(Boolean).forEach(x => tag.append(el('span', '', x)));
+      b.append(tag);
+      b.addEventListener('click', () => seek(starts[k] + Math.min(SC[i].settle, SC[i].dur - 0.05)));
+      list.append(b);
+    });
+    onScene(kAt(state.t));
+  }
+  function buildAlts() {
+    for (const [what, secId, boxId] of [['hook', '#secHooks', '#altHooks'], ['close', '#secCloses', '#altCloses']]) {
+      const list = what === 'hook' ? DATA.seq.hooks : DATA.seq.closings;
+      $(secId).hidden = list.length < 2;
+      const box = $(boxId);
+      box.replaceChildren();
+      list.forEach((i, k) => {
+        const b = el('button', 'alt');
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(state[what] === k));
+        b.append(el('b', '', `${k + 1}. ${SC[i].label}`), el('span', '', SC[i].voText || SC[i].name));
+        b.addEventListener('click', () => { setAlt(what, k); });
+        box.append(b);
+      });
+    }
+  }
+  function setAlt(what, k) {
+    state[what] = k;
+    persist();
+    plan(); buildTimeline(); buildList(); buildAlts();
+    seek(what === 'hook' ? 0 : starts[seq.length - 1]);
+    return SC[seq[what === 'hook' ? 0 : seq.length - 1]].label;
+  }
+  function seekFromPointer(e) {
+    const r = tl.getBoundingClientRect();
+    seek(clamp((e.clientX - r.left) / r.width) * total);
+  }
+  tl.addEventListener('pointerdown', e => {
+    tl.setPointerCapture(e.pointerId);
+    seekFromPointer(e);
+    const mv = ev => seekFromPointer(ev);
+    tl.addEventListener('pointermove', mv);
+    tl.addEventListener('pointerup', () => tl.removeEventListener('pointermove', mv), { once: true });
+  });
+  const go = d => { const k = clamp(kAt(state.t) + d, 0, seq.length - 1); seek(starts[k] + (d < 0 && state.t - starts[kAt(state.t)] > 0.6 && d === -1 ? 0 : 0)); };
+  $('#btnPrev').addEventListener('click', () => { const k = kAt(state.t); seek(state.t - starts[k] > 0.6 ? starts[k] : starts[Math.max(0, k - 1)]); });
+  $('#btnNext').addEventListener('click', () => go(1));
+  btnPlay.addEventListener('click', () => (state.playing ? pause() : play()));
+  const toggles = { btnCap: 'captions', btnZone: 'zones', btnMute: 'muted', btnLoop: 'loop' };
+  function applyToggles() {
+    for (const [id, key] of Object.entries(toggles)) $('#' + id).setAttribute('aria-pressed', String(!!state[key]));
+    guide.hidden = !state.zones;
+    $('#btnMute').innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${state.muted ? 'mute' : 'vol'}"/></svg>`;
+    if (master) master.gain.value = state.muted ? 0 : 1;
+  }
+  for (const [id, key] of Object.entries(toggles)) $('#' + id).addEventListener('click', () => { state[key] = !state[key]; persist(); applyToggles(); capKey = ''; render(state.t); });
+  $$('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  function setTab(t) {
+    state.tab = t;
+    persist();
+    $$('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    $$('.pane').forEach(p => { p.hidden = p.dataset.pane !== t; });
+  }
+  $('#chkPill').addEventListener('click', () => setTab('checks'));
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ') { e.preventDefault(); state.playing ? pause() : play(); }
+    else if (k === 'arrowright') { e.preventDefault(); go(1); }
+    else if (k === 'arrowleft') { e.preventDefault(); $('#btnPrev').click(); }
+    else if (k === 'c') $('#btnCap').click();
+    else if (k === 'z') $('#btnZone').click();
+    else if (k === 'm') $('#btnMute').click();
+    else if (k === 'l') $('#btnLoop').click();
+    else if (k === 'd') $('#btnDl').click();
+  });
+
+  /* Panel sumber, kredit, suara, dan hasil scan saat build */
+  (function panels() {
+    const src = $('#srcList');
+    if (!DATA.sources.length) src.append(el('p', 'note', 'Belum ada sumber. Klaim kesehatan dan angka butuh sumber di reel.json.'));
+    DATA.sources.forEach(s => {
+      const d = el('div', 'ref');
+      d.append(el('b', '', `[${s.id}] `), document.createTextNode(s.cite || s.short));
+      if (s.link) { const a = el('a', '', ' ' + s.link.replace(/^https?:\/\//, '')); a.href = s.link; a.target = '_blank'; a.rel = 'noopener'; d.append(document.createElement('br'), a); }
+      d.append(document.createElement('br'), el('span', s.verified ? 'v' : 'nv', s.verified ? `Terverifikasi ${s.verified}` : 'Belum diverifikasi: jalankan content-studio evidence verify'));
+      src.append(d);
+    });
+    const cr = $('#creditList');
+    if (!DATA.credits.length) cr.append(el('p', 'note', 'Tidak ada footage atau foto dari layanan stok.'));
+    DATA.credits.forEach(c => cr.append(el('div', 'ref', c)));
+    $('#voiceNote').textContent = DATA.voice;
+    const sl = $('#scanList');
+    if (!DATA.scan.length) sl.append(chk('ok', 'Scan aturan bersih.'));
+    DATA.scan.forEach(w => sl.append(chk('warn', w)));
+  })();
+  function chk(kind, text) {
+    const li = el('li', 'chk ' + kind);
+    li.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${kind === 'ok' ? 'check' : 'alert'}"/></svg>`;
+    li.append(el('span', '', text));
+    return li;
+  }
+
+  /* ---------- Pemeriksaan di halaman: zona, ukuran huruf, tumpang tindih, kata terpotong, teks di atas foto ---------- */
+  const META_TEXT = '.r-src, .r-refs, .r-disc, .r-ev-src, .r-meta, .r-handle, .chrome, .r-of';
+  function showOnly(i, tau) {
+    REG.forEach((R, j) => { const v = j === i; if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; } untrans(j); });
+    drawScene(i, tau);
+    capKey = '';
+    captions(i, tau, true);
+    const s = SC[i];
+    chrome.hidden = !s.chrome; chrome.style.opacity = '';
+    ov.classList.toggle('is-dark', s.theme === 'dark'); ov.classList.toggle('is-light', s.theme !== 'dark');
+    $$('.lg-l', ov).forEach(e => { e.hidden = s.theme === 'dark'; });
+    $$('.lg-d', ov).forEach(e => { e.hidden = s.theme !== 'dark'; });
+  }
+  function measure(i) {
+    showOnly(i, SC[i].settle);
+    const sec = REG[i].sec, fr = rf.getBoundingClientRect(), k = fr.width / W;
+    const box = r => ({ x: (r.left - fr.left) / k, y: (r.top - fr.top) / k, w: r.width / k, h: r.height / k });
+    const cz = $('.cz', sec), z = box(cz.getBoundingClientRect());
+    const res = { zone: [], min: [], overlap: [], words: [], media: [], timing: [] };
+    const walker = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT);
+    const medias = $$('.md', sec).map(m => box(m.getBoundingClientRect()));
+    let node, minPx = 999;
+    while ((node = walker.nextNode())) {
+      if (!node.textContent.trim()) continue;
+      const pe = node.parentElement;
+      if (pe.closest('svg, [hidden], .md') || getComputedStyle(pe).visibility === 'hidden') continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = Array.from(range.getClientRects()).map(box).filter(r => r.w > 1 && r.h > 1);
+      const fs = parseFloat(getComputedStyle(pe).fontSize);
+      const meta = !!pe.closest(META_TEXT);
+      minPx = Math.min(minPx, fs);
+      if (fs < (meta ? 30 : 40) - 0.5) res.min.push(`"${node.textContent.trim().slice(0, 24)}" ${Math.round(fs)} px (minimal ${meta ? 30 : 40})`);
+      for (const r of rects) {
+        if (r.x < z.x - 3 || r.x + r.w > z.x + z.w + 3 || r.y < z.y - 3 || r.y + r.h > z.y + z.h + 3) { res.zone.push(`"${node.textContent.trim().slice(0, 24)}" keluar zona konten`); break; }
+      }
+      if (!pe.closest('.r-card, .r-chip, .r-lab-t, .cap')) {
+        for (const r of rects) if (medias.some(m => r.x < m.x + m.w && r.x + r.w > m.x && r.y < m.y + m.h && r.y + r.h > m.y)) { res.media.push(`"${node.textContent.trim().slice(0, 24)}" di atas foto tanpa kartu`); break; }
+      }
+      /* Kata terpotong di tengah: satu kata yang rect-nya ada di dua baris */
+      const txt = node.textContent;
+      const re = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
+      let m;
+      while ((m = re.exec(txt))) {
+        if (m[0].length < 4) continue;
+        const rg = document.createRange();
+        rg.setStart(node, m.index); rg.setEnd(node, m.index + m[0].length);
+        const tops = new Set(Array.from(rg.getClientRects()).filter(r => r.width > 1).map(r => Math.round(r.top / k / 8)));
+        if (tops.size > 1) res.words.push(m[0]);
+      }
+    }
+    /* Bagian yang saling menimpa: anak langsung zona konten, sudut ilustrasi, dan label diagram */
+    const parts = [...Array.from(cz.children), ...$$('.r-lab-t, .r-corner', sec)].filter((e, q, a) => a.indexOf(e) === q && !e.matches('.r-src:empty, .r-bg') && getComputedStyle(e).display !== 'none');
+    const bx = parts.map(e => ({ e, b: box(e.getBoundingClientRect()) })).filter(p => p.b.w > 2 && p.b.h > 2);
+    for (let a = 0; a < bx.length; a++) for (let b = a + 1; b < bx.length; b++) {
+      const A = bx[a], B = bx[b];
+      if (A.e.contains(B.e) || B.e.contains(A.e) || A.e.closest('.ov-ok') || B.e.closest('.ov-ok')) continue;
+      const ix = Math.min(A.b.x + A.b.w, B.b.x + B.b.w) - Math.max(A.b.x, B.b.x), iy = Math.min(A.b.y + A.b.h, B.b.y + B.b.h) - Math.max(A.b.y, B.b.y);
+      if (ix > 6 && iy > 6 && ix * iy > 0.04 * Math.min(A.b.w * A.b.h, B.b.w * B.b.h)) res.overlap.push(`${label(A.e)} menimpa ${label(B.e)}`);
+    }
+    /* Semua bagian sudah masuk sebelum adegan pergi */
+    const late = REG[i].items.filter(d => d.a && d.t + (d.l || (P[d.a] || P.fade)[0]) > SC[i].dur - 0.2);
+    if (late.length) res.timing.push(`${late.length} bagian baru selesai masuk ${secs(Math.max(...late.map(d => d.t + (d.l || P[d.a][0]))))}, adegan berakhir ${secs(SC[i].dur)}`);
+    const ok = Object.fromEntries(Object.entries(res).map(([key, v]) => [key, !v.length]));
+    return { i, name: SC[i].name, label: SC[i].label, dur: SC[i].dur, minPx: Math.round(minPx), ok, res };
+  }
+  function label(e) {
+    const c = e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className || e.tagName;
+    if (/r-ill|ill/.test(c)) return 'ilustrasi';
+    if (/r-lab/.test(c)) return 'label';
+    if (/md/.test(c)) return 'foto';
+    if (/r-card/.test(c)) return 'kartu';
+    if (/r-src/.test(c)) return 'sumber';
+    return (e.textContent || '').trim().slice(0, 20) ? `"${(e.textContent || '').trim().slice(0, 20)}"` : e.tagName.toLowerCase();
+  }
+  let results = [];
+  function runChecks() {
+    const keep = state.t;
+    results = SC.map((s, i) => measure(i));
+    render(keep);
+    const list = $('#chkList');
+    list.replaceChildren();
+    const names = { zone: 'zona konten', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
+    let bad = 0;
+    results.forEach(r => {
+      const fails = Object.keys(r.ok).filter(key => !r.ok[key]);
+      if (fails.length) bad++;
+      list.append(chk(fails.length ? 'bad' : 'ok', `${r.name} (${r.label}): ${fails.length ? fails.map(f => `${names[f]}: ${r.res[f].join(', ')}`).join('; ') : `lolos, huruf terkecil ${r.minPx} px`}`));
+    });
+    const pill = $('#chkPill');
+    pill.className = 'pill ' + (bad ? 'bad' : 'ok');
+    pill.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${bad ? 'alert' : 'check'}"/></svg>`;
+    pill.append(el('span', '', bad ? `${bad} adegan perlu dicek` : 'Pemeriksaan lolos'));
+    return results;
+  }
+
+  plan(); buildTimeline(); buildList(); buildAlts(); applyToggles(); setTab(state.tab);
+  render(0);
+  Promise.all([mediaReady, document.fonts ? document.fonts.ready : null]).then(() => { runChecks(); render(state.t); syncVideos(false); });
+
+  /* Dipakai bagian ekspor di bawah */
+  window.__reelCore = { DATA, SC, REG, P, E, state, plan: () => ({ seq, starts, total }), render, showOnly, drawScene, captions, mediaReady, audioRaw, AU_RAW, decodeAll, scheduleInto, audioPlan, mediaTime, pause, setAlt, runChecks, results: () => results, secs, el, chk, fmtT };
+})();
+</script>

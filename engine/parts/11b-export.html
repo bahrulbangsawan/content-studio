@@ -407,6 +407,14 @@
       const blob = await withExport([i], async () => { const c = newCanvas(); await renderStill(i, c); return toPng(c); });
       return new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
     },
+    /* Ekspor penuh dari terminal (content-studio export): png, mp4-zip, atau mp4-all; lalu dibaca per potong */
+    exportAll: async kind => {
+      const all = slides.map((s, k) => k);
+      const blob = await withExport(all, () => (kind === 'png' ? exportPngAll(() => {}) : kind === 'mp4-zip' ? exportMp4Each(() => {}) : encodeVideo(all, () => {})));
+      window.__studioOut = blob;
+      return blob.size;
+    },
+    chunk: (off, len) => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(window.__studioOut.slice(off, off + len)); }),
     /* Satu frame gerak masuk pada waktu t (ms), digambar oleh mesin ekspor video yang sama */
     renderFrame: async (i, t) => {
       const blob = await withExport([i], async () => {

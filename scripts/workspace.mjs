@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Carry a workspace in one ZIP: accounts, posts (post.json and media), the project's own components and setup
-// answers. Built pages, previews, gate sheets and Instagram references are left out; they are rebuilt.
+// Carry a workspace in one ZIP: accounts, posts (post.json or reel.json, media, voice-over clips, evidence), the
+// project's own components and setup answers. Built pages, previews, exports and Instagram references are left
+// out; they are rebuilt.
 // Useful where files do not stay between conversations (Claude Desktop, claude.ai) and for moving computers.
 // Usage: node workspace.mjs pack [--out <file.zip>] [--root <workspace>]
 //        node workspace.mjs unpack <file.zip> [--force] [--root <workspace>]
@@ -13,7 +14,7 @@ const args = parseArgs();
 const root = workspace(args);
 const cmd = args._[0];
 /* What a workspace needs to be rebuilt: everything else is generated */
-const KEEP = [/^brands\//, /^posts\/[^/]+\/post\.json$/, /^posts\/[^/]+\/media\//, /^components\//, /^setup\//];
+const KEEP = [/^brands\//, /^posts\/[^/]+\/(post|reel|evidence)\.json$/, /^posts\/[^/]+\/(media|audio)\//, /^components\//, /^setup\//];
 
 if (cmd === 'pack') {
   if (!existsSync(root)) fail(`Workspace tidak ditemukan: ${root}`);
