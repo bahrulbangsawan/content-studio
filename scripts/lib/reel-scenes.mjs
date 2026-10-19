@@ -17,6 +17,8 @@ import { findPhrase } from './kit.mjs';
 const f2 = n => (Math.round(n * 100) / 100).toString();
 export const A = (preset, t, l) => ` data-a="${preset}" data-t="${f2(t)}"${l ? ` data-l="${f2(l)}"` : ''}`;
 const ON = t => ` data-on="${f2(t)}"`;
+/* The words of a highlighted phrase bounce once when the marker lands */
+const PULSE = t => ` data-pulse="${f2(t)}"`;
 const DIM = t => ` data-dim="${f2(t)}"`;
 const ic = (ctx, name, cls) => iconSvg(ctx.icons, name, cls);
 
@@ -43,7 +45,7 @@ function kin(ctx, str, { at, focus, mark = 'sun', step = 0.08, slam = false } = 
     if (q === before) out += mark === 'strike' ? `<span class="mk-x"${ON(tm + inFocus * 0.08)}>` : `<span class="mk"${A('mark', tm, 0.42)}${ON(tm + 0.12)}>`;
     out += inside && mark === 'strike'
       ? `<span class="w sw"${A(preset, times[q] ?? 0)}>${esc(p)}<svg class="sw-l" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M0 11 L100 9"${A('draw', tm + (q - before) * 0.08, 0.2)}/></svg></span>`
-      : `<span class="w"${A(preset, times[q] ?? 0)}>${esc(p)}</span>`;
+      : `<span class="w"${A(preset, times[q] ?? 0)}${inside ? PULSE(tm + 0.22 + (q - before) * 0.04) : ''}>${esc(p)}</span>`;
     if (q === before + inFocus - 1) out += '</span>';
     out += q < tokens.length - 1 ? ' ' : '';
   });
@@ -66,16 +68,20 @@ function ill(ctx, name, size, t, preset = 'pop', extra = '') {
   return artSvg(name, `r-ill r-ill-${size}${extra ? ' ' + extra : ''}`, A(preset, t, preset === 'pop' ? 0.6 : 0));
 }
 
-/* Photo or footage in a frame. `kb` slowly moves a photo for the whole scene; video plays from m.from. */
+export const FOCUS_XY = /^(100|\d{1,2})% (100|\d{1,2})%$/;
+/* Photo or footage in a frame. `kb` slowly moves a photo for the whole scene; video plays from m.from.
+   An empty preset shows it from the first frame (an opening must never start blank). */
 function md(ctx, m, cls, t, preset = 'zoomIn') {
   const f = m && ctx.media && ctx.media[m.src];
   const alt = esc((m && m.alt) || '');
-  if (!f) return `<div class="md ${cls} is-missing" role="img" aria-label="${alt}"${A(preset, t)}>${ic(ctx, /\.(mp4|webm|mov)$/i.test((m && m.src) || '') ? 'video' : 'photo', 'md-ph')}</div>`;
-  const pos = `--fp: ${{ top: '50% 18%', bottom: '50% 82%', left: '18% 50%', right: '82% 50%' }[m.focus] || '50% 50%'}`;
+  const enter = preset ? A(preset, t) : '';
+  if (!f) return `<div class="md ${cls} is-missing" role="img" aria-label="${alt}"${enter}>${ic(ctx, /\.(mp4|webm|mov)$/i.test((m && m.src) || '') ? 'video' : 'photo', 'md-ph')}</div>`;
+  /* focus: a named side, or "40% 30%" for the exact point to keep when the frame crops the picture */
+  const pos = `--fp: ${{ top: '50% 18%', bottom: '50% 82%', left: '18% 50%', right: '82% 50%' }[m.focus] || (FOCUS_XY.test(m.focus || '') ? m.focus : '50% 50%')}`;
   const el = f.kind === 'video'
     ? `<video class="md-el" data-media="${f.id}" data-from="${Number(m.from) || 0}" muted playsinline preload="auto" aria-label="${alt}" style="${pos}"></video>`
     : `<img class="md-el" data-media="${f.id}" alt="${alt}" data-kb="${m.move || ['in', 'left', 'out', 'right'][ctx.index % 4]}" style="${pos}">`;
-  return `<div class="md ${cls}${f.kind === 'video' ? ' is-video' : ''}"${A(preset, t)}>${el}</div>`;
+  return `<div class="md ${cls}${f.kind === 'video' ? ' is-video' : ''}"${enter}>${el}</div>`;
 }
 
 /* "Sumber: Kim dkk., 2019" under a claim, from the reel's sources list */
@@ -151,8 +157,8 @@ ${s.kicker ? `<p class="r-kick"${A('rise', ctx.clk.after(0.4))}>${esc(s.kicker)}
       }
       if (v === 'footage') {
         const k = kin(ctx, s.title, { at: t0 + 0.3, focus: s.focus });
-        return `<div class="r-bg">${md(ctx, s.media, 'md-full', 0, 'fade')}</div>
-<div class="cz r-hook v-footage"><div class="r-card r-plate"${A('up', t0 + 0.1)}>${s.kicker ? `<p class="r-kick">${esc(s.kicker)}</p>` : ''}<h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${srcChip(ctx, s, k.end)}</div></div>`;
+        return `<div class="r-bg">${md(ctx, s.media, 'md-full', 0, '')}</div>
+<div class="cz r-hook v-footage"><div class="r-card r-plate"${A('up', t0 + 0.1)}><h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` : ''}${srcChip(ctx, s, k.end)}</div></div>`;
       }
       if (v === 'split') {
         const k = kin(ctx, s.title, { at: t0 + 0.35, focus: s.focus });
@@ -356,11 +362,14 @@ ${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` :
     desc: 'Video atau foto yang menunjukkan gerakannya. Teks di kartu padat, tidak pernah langsung di atas gambar.',
     visual: 'Footage atau foto penuh layar, dalam bingkai, atau di atas teks',
     variants: { full: 'Penuh', frame: 'Bingkai', split: 'Atas teks' },
-    keys: { variant: variant('full', 'frame', 'split'), media: media(true), title: text(8, 48), text: text(14, 84), source: SRC },
+    keys: { variant: variant('full', 'frame', 'split'), media: media(true), title: text(8, 48), focus: only(phrase('title', 4, 30), 'split'), text: text(14, 84), source: SRC },
     render(s, ctx) {
       const v = s.variant || 'full', t0 = ctx.clk.t0;
       if (v === 'frame') return `<div class="cz r-ft v-frame">${md(ctx, s.media, 'md-frame', 0, 'zoomIn')}${s.title ? `<span class="r-chip c-card r-ft-chip ov-ok"${A('up', t0 + 0.3)}><span>${esc(s.title)}</span></span>` : ''}${s.text ? `<p class="r-body"${A('rise', t0 + 0.5)}>${esc(s.text)}</p>` : ''}${srcChip(ctx, s, t0 + 0.6)}</div>`;
-      if (v === 'split') return `<div class="cz r-ft v-split">${md(ctx, s.media, 'md-top', 0, 'wipeUp')}${s.title ? `<h2 class="r-h2"${A('rise', t0 + 0.3)}>${esc(s.title)}</h2>` : ''}${s.text ? `<p class="r-body"${A('rise', t0 + 0.5)}>${esc(s.text)}</p>` : ''}${srcChip(ctx, s, t0 + 0.6)}</div>`;
+      if (v === 'split') {
+        const k = s.title ? kin(ctx, s.title, { at: t0 + 0.3, focus: s.focus }) : { html: '', end: t0 + 0.3 };
+        return `<div class="cz r-ft v-split">${md(ctx, s.media, 'md-top', 0, 'wipeUp')}${s.title ? `<h2 class="r-h2">${k.html}</h2>` : ''}${s.text ? `<p class="r-body"${A('rise', Math.max(t0 + 0.5, k.end + 0.1))}>${esc(s.text)}</p>` : ''}${srcChip(ctx, s, Math.max(t0 + 0.6, k.end + 0.2))}</div>`;
+      }
       return `<div class="r-bg">${md(ctx, s.media, 'md-full', 0, 'fade')}</div><div class="cz r-ft v-full">${s.title || s.text ? `<div class="r-card r-plate"${A('up', t0 + 0.25)}>${s.title ? `<p class="r-h3">${esc(s.title)}</p>` : ''}${s.text ? `<p class="r-body">${esc(s.text)}</p>` : ''}${srcChip(ctx, s, t0 + 0.6)}</div>` : srcChip(ctx, s, t0 + 0.6, true)}</div>`;
     },
   },
@@ -483,8 +492,13 @@ ${chip(ctx, s.cta.icon, s.cta.text, 'c-joint r-cta', k.end + 0.15)}</div></div>
 export const OPENERS = Object.keys(SCENES).filter(k => SCENES[k].role === 'open');
 export const CLOSERS = Object.keys(SCENES).filter(k => SCENES[k].role === 'close');
 /* Fields every scene may carry, besides its type's own */
-export const SCENE_KEYS = ['type', 'variant', 'name', 'theme', 'vo', 'duration', 'transition', 'captions', 'tone'];
-export const TRANSITIONS = ['up', 'wipe', 'zoom', 'slide', 'circle', 'fade', 'cut'];
+export const SCENE_KEYS = ['type', 'variant', 'name', 'theme', 'vo', 'duration', 'transition', 'camera', 'backdrop', 'captions', 'tone'];
+/* whip: quick pan with motion blur. zoomthru: through the scene into the next. color: two brand-colour bands
+   sweep across. split: the next scene opens from the middle. */
+export const TRANSITIONS = ['whip', 'zoomthru', 'color', 'split', 'up', 'wipe', 'zoom', 'slide', 'circle', 'fade', 'cut'];
+/* Slow camera move on the scene's content, and the soft shapes moving behind it */
+export const CAMERAS = ['push', 'pull', 'left', 'right', 'rise', 'punch', 'none'];
+export const BACKDROPS = ['blob', 'ring', 'dots', 'none'];
 
 /** A scene has a picture when its type draws one or it names an illustration or footage. */
 export function sceneVisual(s) {

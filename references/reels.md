@@ -6,7 +6,8 @@ Akun, warna, font, ilustrasi, dan aturan tulisannya sama dengan carousel. Bedany
 
 - **Suara.** Voice over Gemini 3.8 Flash TTS per adegan.
 - **Subtitle.** Tertanam di video, kata yang sedang diucapkan bersorot.
-- **Footage stok.** Dari Magnific atau Pexels, dengan kreditnya.
+- **Footage stok.** Dari Magnific atau Pexels, dengan kreditnya. Foto berlisensi terbuka dari Openverse tanpa key.
+- **Gerak hidup.** Kamera pelan, latar bergerak, transisi whip, zoomthru, dan sapuan warna, serta efek suara.
 - **Bukti ilmiah.** Wajib untuk setiap angka dan klaim penelitian.
 
 Isi:
@@ -131,6 +132,8 @@ Konten kesehatan harus berbasis bukti. Aturannya:
   "caption": "Teks posting Instagram, lalu tagar.",
   "voice": { "provider": "gemini", "preset": "semangat" },
   "captions": true,
+  "motion": "lively",
+  "sfx": true,
   "music": { "src": "musik.mp3", "volume": 0.12 },
   "sources": [ { "id": "s1", "short": "Nordon dkk., 2025", "cite": "...", "doi": "10.1590/...", "pmid": "39802577", "year": 2025 } ],
   "scenes": [ { "type": "hook", ... }, ..., { "type": "closing", ... } ],
@@ -150,8 +153,10 @@ Konten kesehatan harus berbasis bukti. Aturannya:
   - `tone`: arahan suara adegan ini
   - `name`: nama di daftar adegan
   - `transition`: transisi masuk
+  - `camera` dan `backdrop`: gerak kamera dan latar adegan ini (lihat bagian 7)
   - `duration`: detik minimum, biasanya tidak perlu
   - `captions`: `false` menyembunyikan subtitle adegan ini
+- `motion`: `lively` (bawaan) atau `calm`. `sfx`: efek suara transisi dan pop, bawaannya menyala di `lively`.
 - Tidak ada field gaya. Warna, ukuran, posisi, dan gerak datang dari engine dan akun.
 
 ## 6. Jenis adegan
@@ -237,7 +242,9 @@ Ilustrasi besar dengan dua sampai empat label bergaris penunjuk, muncul satu per
 Video atau foto yang menunjukkan gerakannya. Teks selalu di kartu padat, tidak pernah langsung di atas gambar. Voice over maks 32 kata.
 Varian: `full` penuh layar dengan kartu di bawah, `frame` dalam bingkai dengan label, `split` gambar di atas teks.
 - media: { src, alt, focus, from (detik awal video), move (in, out, left, right untuk foto) }, wajib
+  - `focus`: `center`, `top`, `bottom`, `left`, `right`, atau titik "40% 45%" yang dipertahankan saat foto dipotong
 - title: teks, maks 8 kata, 48 karakter
+- focus: frasa dari title yang disorot, hanya varian `split`
 - text: teks, maks 14 kata, 84 karakter
 - source
 
@@ -301,7 +308,15 @@ Varian: `follow` ikuti (logo besar), `save` simpan, `share` kirim, `comment` per
   1. Transkripsi klip suara (`voice` melakukannya otomatis bila ada key OpenAI atau Gemini).
   2. Jeda yang terdengar di klip, dicocokkan dengan tanda baca naskah.
   3. Perkiraan dari naskah.
-- **Transisi.** Bawaannya bergiliran: `up`, `wipe`, `zoom`, `slide`, `circle`, `fade`. Footage penuh memakai `fade` atau `zoom`. Isi `transition` hanya bila ingin efek tertentu; `cut` untuk potongan langsung.
+- **Transisi.** Bawaannya bergiliran: `whip` (geser cepat dengan blur gerak), `zoomthru` (menembus ke adegan berikutnya), `color` (dua pita warna akun menyapu layar), `slide`, `split` (terbuka dari tengah), `circle`, `up`, `wipe`. Penutup memakai `color`, footage penuh memakai `zoomthru` atau `fade`. Isi `transition` hanya bila ingin efek tertentu; `cut` untuk potongan langsung, `zoom` dan `fade` untuk yang lembut.
+- **Gerak hidup** (`"motion": "lively"`, bawaan). Supaya tidak ada frame yang diam:
+  - Teks masuk tajam dari sedikit kabur; kata yang disorot memantul sekali saat penandanya tiba; angka memantul saat selesai dihitung.
+  - **Kamera**: isi adegan bergerak pelan (`camera`: `push`, `pull`, `left`, `right`, `rise`; pembuka `punch`; `none` untuk diam). Bawaannya bergiliran.
+  - **Latar**: bentuk lembut warna akun bergeser di belakang isi (`backdrop`: `blob`, `ring`, `dots`, `none`). Tidak ada di footage penuh, karena fotonya sudah bergerak.
+  - Ilustrasi melayang pelan setelah masuk, dan subtitle muncul dengan pop.
+  - **Efek suara** dibuat di browser, tanpa berkas: desir pelan di setiap transisi dan pop kecil saat chip, lencana, dan cap masuk. Di bawah suara, sama di pemutar dan MP4. `"sfx": false` mematikannya.
+  - `"motion": "calm"` untuk topik yang butuh tenang: transisi lembut, tanpa kamera, latar, blur, maupun efek suara.
+  - Pemeriksaan dan pratinjau PNG mengukur tata letak saat diam; gerak kamera tetap di dalam zona aman.
 - **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 26 karakter), menempel di batas bawah zona aman, di pelat kartu, dengan kata yang diucapkan disorot.
   - Disembunyikan otomatis di adegan yang teks layarnya sama dengan suaranya, dan di penutup.
   - `"captions": false` mematikan semuanya.
@@ -321,6 +336,7 @@ Jangan mengambil gambar dari postingan orang lain.
 - **Mencari footage.**
   - `footage search "<kata kunci bahasa Inggris>"` mencari video tegak. `--type photo` untuk foto, `--any-shape` untuk bentuk lain.
   - Penyedianya Magnific (bila ada key; paket berbayar) atau Pexels (key gratis). Pakai `--provider` untuk memilih.
+  - **Foto tanpa key**: Openverse (`--provider openverse`, otomatis untuk `--type photo` bila tidak ada key). Isinya foto Flickr, Wikimedia Commons, dan museum dengan lisensi yang boleh dipakai komersial dan diubah: CC0, domain publik, atau CC BY. Pilihannya lebih sedikit dan kualitasnya beragam, jadi cari dengan beberapa kata kunci.
   - Hasilnya daftar bernomor dan `refs/footage/<kueri>/sheet.png`. **Lihat lembar kontaknya** sebelum memilih. Pastikan gambarnya benar secara klinis: posisi, gerakan, dan usia anak sesuai isi.
 - **Mengambil footage.**
   - `footage get <provider>:<id> --slug <slug> [--start 2] [--length 8]` mengunduh dan memotongnya. Video tegak dipotong ke 1080 x 1920, yang mendatar disimpan dalam bentuk aslinya untuk varian `frame` atau `split`.
@@ -328,6 +344,8 @@ Jangan mengambil gambar dari postingan orang lain.
   - `footage fit <slug> <berkas>` mengecilkan berkas yang terlalu besar (video maks 25 MB, total 90 MB).
 - **Lisensi.**
   - Pexels gratis, termasuk komersial; kredit dianjurkan.
+  - Openverse: CC BY wajib kredit (judul, pembuat, sumber, lisensi); `footage get` menuliskannya ke caption. CC BY-SA tidak dipakai karena videonya harus ikut berlisensi sama.
+  - Lisensi CC tidak mencakup izin orang di foto. Untuk anak dan pasien, pilih foto tanpa wajah yang jelas: dari belakang, dari atas, tangan, kaki, atau mainan.
   - Magnific paket berbayar boleh dipakai komersial tanpa atribusi.
   - Aset dari paket Free Magnific hanya untuk pribadi dan wajib atribusi.
   - Tidak boleh menampilkan orang yang dapat dikenali dalam konteks negatif, misalnya "anak dengan kelainan" memakai wajah anak stok.

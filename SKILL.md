@@ -1,6 +1,6 @@
 ---
 name: content-studio
-description: Membuat konten edukasi Instagram dengan design system akun yang dikunci: carousel (1080 x 1350, post.json) dan Reels atau video penjelasan 9:16 (1080 x 1920, reel.json) dengan voice over Gemini, subtitle mengikuti suara, animasi, ilustrasi, footage stok, dan sumber ilmiah. Hasilnya halaman studio HTML dengan pratinjau, pemeriksaan, dan unduhan PNG, MP4 bersuara, SRT, serta caption. CLI content-studio menyimpan API key, mentranskrip video, mengunduh postingan Instagram, mencari footage Magnific atau Pexels, mencari dan memverifikasi bukti PubMed, membuat voice over, dan mengekspor. Pakai setiap kali pengguna ingin membuat, mengedit, memeriksa, atau mengekspor carousel, Reels, video edukasi, motion content, atau slide media sosial; menyiapkan akun brand; memberi link Instagram sebagai contoh; mentranskrip video; mencari footage atau bukti penelitian; atau menyebut content studio, carousel, reel, atau voice over, walau tidak menyebut kata skill.
+description: Membuat konten edukasi Instagram dengan design system akun yang dikunci: carousel (1080 x 1350, post.json) dan Reels atau video penjelasan 9:16 (1080 x 1920, reel.json) dengan voice over Gemini, subtitle mengikuti suara, animasi, ilustrasi, footage stok, dan sumber ilmiah. Hasilnya halaman studio HTML dengan pratinjau, pemeriksaan, dan unduhan PNG, MP4 bersuara, SRT, serta caption. CLI content-studio menyimpan API key, mentranskrip video, mengunduh postingan Instagram, mencari footage Magnific atau Pexels dan foto berlisensi terbuka, mencari dan memverifikasi bukti PubMed, membuat voice over, dan mengekspor. Pakai setiap kali pengguna ingin membuat, mengedit, memeriksa, atau mengekspor carousel, Reels, video edukasi, motion content, atau slide media sosial; menyiapkan akun brand; memberi link Instagram sebagai contoh; mentranskrip video; mencari footage atau bukti penelitian; atau menyebut content studio, carousel, reel, atau voice over, walau tidak menyebut kata skill.
 ---
 
 # Content Studio
@@ -128,7 +128,7 @@ Batas ini ada supaya setiap postingan dari akun yang sama terlihat seperti satu 
 | `refs/<kode>/` hasil `ref.mjs` | Baca saja | Pelajari struktur dan idenya, lalu tulis isi baru. Teks dan gambar postingan orang tidak disalin ke slide |
 | `posts/<slug>/reel.json`: naskah voice over, adegan, teks layar, sumber, alternatif pembuka dan penutup | Ya | Ikuti `references/reels.md`, lalu scan |
 | `sources` di reel.json | Ya, hanya dari makalah yang benar ada dan sudah dibaca kesimpulannya | `evidence search`, `evidence cite`, lalu `evidence verify`. Jangan mengarang angka, penulis, tahun, atau DOI |
-| Footage dan foto stok di `posts/<slug>/media/` | Ya, hanya lewat `footage get` dari Magnific atau Pexels | Lihat lembar kontaknya dulu. Kreditnya tercatat otomatis. Jangan mengunduh gambar dari situs lain atau dari postingan orang |
+| Footage dan foto stok di `posts/<slug>/media/` | Ya, hanya lewat `footage get` dari Magnific, Pexels, atau Openverse | Lihat lembar kontaknya dulu. Kreditnya tercatat otomatis. Jangan mengunduh gambar dari situs lain atau dari postingan orang |
 | `posts/<slug>/audio/` dan `voice.json` | Tidak diedit langsung | Ditulis `content-studio voice`. Ubah naskahnya di reel.json lalu jalankan ulang |
 | `~/.content-studio/config.json` dan API key | Tidak | Pengguna sendiri yang mengisi lewat `content-studio setup` |
 
@@ -271,6 +271,7 @@ Isi setiap adegan dengan `vo` (naskah yang diucapkan) dan teks layar yang ringka
 
 - **Satu ide per adegan.** Biasanya 5 sampai 9 adegan, 30 sampai 75 detik.
 - **Pembuka selesai dalam 3 sampai 5 detik, tanpa salam.** Tulis 2 sampai 4 alternatif di `hooks` dengan jenis berbeda (pertanyaan, angka bersumber, mitos dicoret, footage), dan 1 sampai 3 di `closings` (ikuti, simpan, kirim, komentar).
+- **Gerak bawaannya hidup**: kamera pelan, latar bergerak, transisi whip, zoomthru, dan sapuan warna, serta efek suara. Biarkan engine memilih bergiliran; isi `transition`, `camera`, atau `backdrop` hanya untuk penekanan. `"motion": "calm"` untuk topik yang sensitif.
 - **Pilih jenis adegan dari bentuk isinya.** Ada 16 jenis: hook, statement, stat, steps, list, compare, mythfact, diagram, footage, evidence, definition, tip, flags, timeline, recap, closing. Ganti jenis atau varian antaradegan, dan selang-seling `theme`.
 - **Sebut butir dalam urutan tampilnya.** Langkah, butir, dan label muncul saat suara menyebutnya.
 - **Setiap adegan punya gambar** (`art`, `media`, atau jenis yang menggambar sendiri).
@@ -278,9 +279,9 @@ Isi setiap adegan dengan `vo` (naskah yang diucapkan) dan teks layar yang ringka
 
 ### 3. Gambar
 
-Dahulukan foto dan video dari pemilik akun, lalu ilustrasi katalog. Bila perlu footage stok:
+Dahulukan foto dan video dari pemilik akun, lalu ilustrasi katalog. Bila perlu footage stok atau pemilik meminta foto:
 
-1. `content-studio footage search "<kata kunci bahasa Inggris>"` mencari footage.
+1. `content-studio footage search "<kata kunci bahasa Inggris>"` mencari footage. Foto tanpa key: `--type photo --any-shape` memakai Openverse (CC0, domain publik, CC BY). Untuk anak dan pasien, pilih foto tanpa wajah yang jelas.
 2. **Lihat `refs/footage/<kueri>/sheet.png` dengan alat baca gambar.** Pastikan gerakan, posisi, dan usia di gambarnya benar secara klinis.
 3. `content-studio footage get <provider>:<id> --slug <slug> --length 8` mengunduhnya ke `posts/<slug>/media/`.
 

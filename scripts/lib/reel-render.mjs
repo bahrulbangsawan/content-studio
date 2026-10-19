@@ -13,7 +13,18 @@ import { videoZones } from './brand.mjs';
 export const voKey = s => sha256(JSON.stringify([String(s.vo || '').trim(), String(s.tone || '').trim()])).slice(0, 16);
 
 const EXTRA_ICONS = { x: CROSS, 'arrow-down': ['M12 5l0 14', 'M18 13l-6 6', 'M6 13l6 6'] };
-const CYCLE = ['up', 'wipe', 'zoom', 'slide', 'circle', 'fade'];
+/* Transitions in turn when a scene names none: lively mixes the punchy ones with the plain ones */
+const CYCLE = { lively: ['whip', 'zoomthru', 'color', 'slide', 'split', 'circle', 'up', 'wipe'], calm: ['up', 'wipe', 'zoom', 'slide', 'circle', 'fade'] };
+const TR_LEN = { whip: 0.36, color: 0.72, zoomthru: 0.5, split: 0.48 };
+const CAM_CYCLE = ['push', 'left', 'rise', 'right', 'pull'];
+/* Sound effect cues: chips, badges, stamps and diagram labels landing */
+const POP_RE = /class="(?:r-chip|r-badge|r-stamp|r-lab-t)[^"]*"\s+data-a="(?:pop|stamp)" data-t="([\d.]+)"/g;
+function pops(html) {
+  const ts = [...html.matchAll(POP_RE)].map(m => Number(m[1])).filter(t => t >= 0.3).sort((a, b) => a - b);
+  const out = [];
+  for (const t of ts) if (!out.length || t - out[out.length - 1] >= 0.28) out.push(t);
+  return out.slice(0, 6).map(t => +(t + 0.04).toFixed(2));
+}
 const MIN = { hook: 2.2, closing: 3.4 };
 const LEN = { rise: 0.55, fade: 0.45, pop: 0.55, slam: 0.34, word: 0.32, left: 0.5, right: 0.5, up: 0.7, zoomIn: 0.9, wipe: 0.6, wipeUp: 0.65, draw: 0.6, grow: 0.55, mark: 0.42, stamp: 0.42, flipIn: 0.3, count: 1.1 };
 
@@ -51,7 +62,8 @@ export function renderReel(reel, ctx) {
 
   const main = reel.scenes, H = [main[0], ...(reel.hooks || [])], Cl = [main[main.length - 1], ...(reel.closings || [])];
   const entries = [...H.map(s => ({ s, role: 'hook' })), ...main.slice(1, -1).map((s, k) => ({ s, role: 'mid', k })), ...Cl.map(s => ({ s, role: 'close' }))];
-  const closeTr = Cl[0].transition || 'up';
+  const motion = reel.motion === 'calm' ? 'calm' : 'lively', lively = motion === 'lively';
+  const closeTr = Cl[0].transition || (lively ? 'color' : 'up');
   const clips = [];
   const scenes = [], markup = [];
   entries.forEach((e, i) => {
@@ -68,8 +80,14 @@ export function renderReel(reel, ctx) {
     const html = def.render(s, { brand: b, icons, media: ctx.media, sources, sourceList, clk, index: i, theme, logo });
     const end = lastEnd(html);
     const dur = +Math.max(base, end + 0.55).toFixed(2);
-    const tr = e.role === 'hook' ? 'cut' : s.transition || (e.role === 'close' ? closeTr : (s.type === 'footage' && (s.variant || 'full') === 'full' ? ['fade', 'zoom'][e.k % 2] : CYCLE[e.k % CYCLE.length]));
-    const onScreen = [s.title, s.term, s.myth].filter(Boolean).join(' ');
+    const cyc = CYCLE[motion];
+    const tr = e.role === 'hook' ? 'cut' : s.transition || (e.role === 'close' ? closeTr : (s.type === 'footage' && (s.variant || 'full') === 'full' ? (lively ? ['zoomthru', 'fade'] : ['fade', 'zoom'])[e.k % 2] : cyc[e.k % cyc.length]));
+    const bleed = (s.type === 'footage' && (s.variant || 'full') === 'full') || (s.type === 'hook' && s.variant === 'footage');
+    /* Camera and backdrop: none on full-frame footage (the picture moves itself) and in calm reels */
+    const cam = !lively ? '' : s.camera ? (s.camera === 'none' ? '' : s.camera) : bleed ? '' : e.role === 'hook' ? 'punch' : e.role === 'close' ? 'pull' : CAM_CYCLE[e.k % CAM_CYCLE.length];
+    /* Themes alternate, so the pattern turns every other scene of the same theme */
+    const bd = !lively || bleed ? '' : s.backdrop ? (s.backdrop === 'none' ? '' : s.backdrop) : (theme === 'dark' ? ['ring', 'blob'] : ['blob', 'dots'])[Math.floor((e.k ?? (e.role === 'close' ? 1 : 0)) / 2) % 2];
+    const onScreen = [s.title, s.term, s.myth, s.kicker].filter(Boolean).join(' ');
     const captions = (reel.captions ?? vr.captions) !== false && s.captions !== false && e.role !== 'close' && !(s.vo && onScreen && overlap(onScreen, s.vo) >= 0.6);
     let vo = null;
     if (clip) {
@@ -80,14 +98,15 @@ export function renderReel(reel, ctx) {
     const v = def.variants ? def.variants[s.variant || def.keys.variant.default] : '';
     const name = s.name || (e.role === 'hook' ? (i === 0 ? 'Pembuka' : `Pembuka ${i + 1}`) : e.role === 'close' ? 'Penutup' : def.label);
     scenes.push({
-      name, slug: slugify(name), type: s.type, label: `${def.label}${v ? ', ' + v.toLowerCase() : ''}`, theme, dur, tr, trLen: tr === 'cut' ? 0 : TRANSITION,
-      captions, bleed: (s.type === 'footage' && (s.variant || 'full') === 'full') || (s.type === 'hook' && s.variant === 'footage'),
+      name, slug: slugify(name), type: s.type, label: `${def.label}${v ? ', ' + v.toLowerCase() : ''}`, theme, dur, tr, trLen: tr === 'cut' ? 0 : TR_LEN[tr] || TRANSITION,
+      captions, bleed, cam, bd, pops: lively ? pops(html) : [],
       settle: +Math.min(dur - 0.05, end + 0.15).toFixed(2), vo, voText: spoken(s.vo || ''), caps: captionChunks(words, { maxChars: vr.captionChars }),
       tags: [s.media ? 'footage' : '', s.art ? `ilustrasi ${s.art}` : '', ...[].concat(s.source || []).map(id => `sumber ${id}`)].filter(Boolean),
       estimated: !!(s.vo && !clip),
       credits: s.media && ctx.credits && ctx.credits[s.media.src] ? [ctx.credits[s.media.src]] : [],
     });
-    markup.push(`<section class="scene slide is-${theme}" data-i="${i}" aria-label="${esc(name)}"${i === 0 ? '' : ' hidden'}>\n${html}\n</section>`);
+    const back = bd ? `<div class="bd bd-${bd}" aria-hidden="true"><i></i><i></i><i></i></div>\n` : '';
+    markup.push(`<section class="scene slide is-${theme}" data-i="${i}" data-bd="${bd}" aria-label="${esc(name)}"${i === 0 ? '' : ' hidden'}>\n${back}${html}\n</section>`);
   });
   const nH = H.length, nM = main.length - 2;
   const seq = { hooks: H.map((_, k) => k), main: Array.from({ length: nM }, (_, k) => nH + k), closings: Cl.map((_, k) => nH + nM + k) };
@@ -104,7 +123,7 @@ export function renderReel(reel, ctx) {
     STAGE_LABEL: esc(`${reel.title}, video 9:16. Spasi untuk memutar.`),
     SCENES: markup.join('\n'),
     LOGO_LIGHT: logo('light'), LOGO_DARK: logo('dark'), HANDLE: `<span>@${esc(b.handle)}</span>`,
-    GUIDE: guide(scenes, seq, vr),
+    GUIDE: guide(scenes, seq, vr, motion),
     clips,
     total,
     DATA: {
@@ -112,12 +131,13 @@ export function renderReel(reel, ctx) {
       scenes, seq, sources: (reel.sources || []).map(s => ({ id: s.id, short: s.short, cite: s.cite, link: sources[s.id].link, verified: s.verified || '' })),
       credits: [...new Set(Object.values(ctx.credits || {}))], caption: reel.caption || '', disclaimer: b.disclaimer || '', voice: voiceNote, scan: ctx.warnings || [],
       music: ctx.music || null,
+      motion, sfx: reel.sfx ?? lively,
       videoRules: vr, zones: videoZones(vr),
     },
   };
 }
 
-function guide(scenes, seq, v) {
+function guide(scenes, seq, v, motion) {
   const rows = (list, k) => list.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
   const used = [...new Set([...seq.main, seq.closings[0]].map(i => scenes[i].tr).filter(t => t !== 'cut'))];
   const z = videoZones(v), pc = n => `${Math.round((n / 1920) * 1000) / 10}%`.replace('.', ',');
@@ -145,6 +165,6 @@ function guide(scenes, seq, v) {
     ['Pembuka', '120/126, 700 (turun ke 104 atau 92 untuk kata panjang)'], ['Judul adegan', '72/80 sampai 92/100, 700'], ['Isi', '48/64 sampai 56/72'],
     ['Angka', '300/280 dan 180/176, dihitung naik'], ['Subtitle', '58/84, 700, kata yang diucapkan bersorot'], ['Terkecil', '40 px untuk isi, 30 px untuk sumber dan disclaimer'],
   ])}</dl></div>
-<div class="sec"><h3>Gerak</h3><p class="note">Setiap bagian muncul saat suara menyebutnya. Kata pembuka tampil satu per satu mengikuti ucapan. Langkah sebelumnya meredup saat langkah berikutnya datang. Transisi di video ini: ${esc(used.join(', ') || 'potong langsung')}.</p></div>
+<div class="sec"><h3>Gerak</h3><p class="note">Setiap bagian muncul saat suara menyebutnya, tajam dari sedikit kabur. Kata pembuka tampil satu per satu mengikuti ucapan; kata yang disorot memantul sekali. Langkah sebelumnya meredup saat langkah berikutnya datang. ${motion === 'calm' ? '' : 'Isi adegan bergerak pelan seperti kamera, bentuk warna akun bergeser di latar, ilustrasi melayang, dan subtitle muncul dengan pop. '}Transisi di video ini: ${esc(used.join(', ') || 'potong langsung')}.</p></div>
 <div class="sec"><h3>Ekspor</h3><p class="note">MP4 1080 x 1920, 30 fps, H.264 10 Mbps, AAC 48 kHz stereo, moov di depan: sesuai spesifikasi Reels. Dari terminal: content-studio export ${esc('<slug>')} menulis MP4, cover, SRT, dan caption sekaligus.</p></div>`;
 }

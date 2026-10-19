@@ -45,7 +45,7 @@ Bahan
   evidence search "<topik>"     Cari tinjauan sistematis dan uji klinis di PubMed, dengan kesimpulannya
   evidence cite <doi|pmid>      Entri sumber siap pakai untuk reel.json
   evidence verify <slug>        Cek setiap sumber: ada, tahunnya cocok, tidak ditarik
-  footage search "<kata kunci>" [--type photo]   Footage dan foto stok tegak (Magnific atau Pexels), dengan lembar kontak
+  footage search "<kata kunci>" [--type photo]   Footage dan foto stok tegak (Magnific, Pexels, atau foto Openverse tanpa key), dengan lembar kontak
   footage get <provider>:<id> --slug <slug>       Unduh, potong ke 1080 x 1920, catat kreditnya
   footage mcp                   Pasang MCP Magnific di Claude Code (gambar dan video AI)
 

@@ -3,7 +3,8 @@
 // The in-page checks (zone, sizes, overlap, broken words, text on photos) run later in reel.mjs verify.
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SCENES, SCENE_KEYS, TRANSITIONS, sceneVisual } from './reel-scenes.mjs';
+import { SCENES, SCENE_KEYS, TRANSITIONS, CAMERAS, BACKDROPS, FOCUS_XY, sceneVisual } from './reel-scenes.mjs';
+import { FOCUS } from './media.mjs';
 import { ART } from './art.mjs';
 import { countWords } from './common.mjs';
 import { findPhrase } from './kit.mjs';
@@ -14,7 +15,7 @@ import { createHash } from 'node:crypto';
 /* Same key as reel-render.mjs voKey (kept here to avoid a circular import) */
 const voKeyOf = s => createHash('sha256').update(JSON.stringify([String(s.vo || '').trim(), String(s.tone || '').trim()])).digest('hex').slice(0, 16);
 
-const POST_KEYS = ['brand', 'slug', 'title', 'format', 'caption', 'voice', 'captions', 'music', 'sources', 'scenes', 'hooks', 'closings'];
+const POST_KEYS = ['brand', 'slug', 'title', 'format', 'caption', 'voice', 'captions', 'motion', 'sfx', 'music', 'sources', 'scenes', 'hooks', 'closings'];
 const SOURCE_KEYS = ['id', 'cite', 'short', 'doi', 'pmid', 'url', 'year', 'note', 'verified', 'design'];
 const VOICE_KEYS = ['preset', 'provider', 'voice', 'style', 'model', 'language', 'pronounce'];
 const MEDIA_KEYS = ['src', 'alt', 'focus', 'from', 'move', 'still'];
@@ -69,6 +70,10 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     if (!s.verified && (s.doi || s.pmid)) warnings.push(`${p} (${s.short || s.id}) belum diverifikasi. Jalankan: content-studio evidence verify ${reel.slug}`);
   });
 
+  /* Motion: lively (camera, moving backdrop, blur, sound effects) or calm */
+  if (reel.motion !== undefined && !['lively', 'calm'].includes(reel.motion)) errors.push('motion: lively (bawaan: kamera bergerak, latar hidup, efek suara) atau calm (tenang).');
+  if (reel.sfx !== undefined && typeof reel.sfx !== 'boolean') errors.push('sfx harus true atau false (efek suara transisi dan pop).');
+
   /* Music */
   if (reel.music !== undefined) {
     const m = reel.music;
@@ -122,6 +127,7 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
         if (!value.alt || String(value.alt).length > 140) errors.push(`${path}.alt wajib: apa yang terlihat, maksimal 140 karakter.`);
         if (value.from !== undefined && !(typeof value.from === 'number' && value.from >= 0 && value.from < 600)) errors.push(`${path}.from: detik awal video, misalnya 2.5.`);
         if (value.move !== undefined && !['in', 'out', 'left', 'right'].includes(value.move)) errors.push(`${path}.move: in, out, left, atau right.`);
+        if (value.focus !== undefined && !FOCUS.includes(value.focus) && !FOCUS_XY.test(String(value.focus))) errors.push(`${path}.focus: ${FOCUS.join(', ')}, atau titik "40% 30%" (bagian yang dipertahankan saat dipotong).`);
         if (spec.kinds && !spec.kinds.includes(kind)) errors.push(`${path}: tata letak ini butuh ${spec.kinds.join(' atau ')}.`);
         medias.push({ path, src: value.src, kind });
         return;
@@ -153,6 +159,8 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     if (def.validate) for (const m of def.validate(s, countWords)) errors.push(`${path}.${m}`);
     if (s.theme !== undefined && !['light', 'dark'].includes(s.theme)) errors.push(`${path}.theme: light atau dark.`);
     if (s.transition !== undefined && !TRANSITIONS.includes(s.transition)) errors.push(`${path}.transition: ${TRANSITIONS.join(', ')}.`);
+    if (s.camera !== undefined && !CAMERAS.includes(s.camera)) errors.push(`${path}.camera: ${CAMERAS.join(', ')}.`);
+    if (s.backdrop !== undefined && !BACKDROPS.includes(s.backdrop)) errors.push(`${path}.backdrop: ${BACKDROPS.join(', ')}.`);
     if (s.duration !== undefined && !(typeof s.duration === 'number' && s.duration >= 1.6 && s.duration <= 12)) errors.push(`${path}.duration: 1,6 sampai 12 detik. Biasanya tidak perlu: durasi mengikuti voice over.`);
     if (s.captions !== undefined && typeof s.captions !== 'boolean') errors.push(`${path}.captions harus true atau false.`);
     if (s.name !== undefined && (typeof s.name !== 'string' || s.name.length > 40)) errors.push(`${path}.name maksimal 40 karakter.`);

@@ -29,14 +29,17 @@
     back: p => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); },
     expo: p => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p)),
   };
+  /* Lively motion (default) or calm: no camera, backdrop drift, floating, blur or sound effects */
+  const MOTION = DATA.motion !== 'calm';
+  /* Text arrives sharp out of a soft blur, which reads as motion even on a still frame */
   const P = {
-    rise: [0.55, p => ({ o: clamp(p * 1.8), y: (1 - E.out(p)) * 56 })],
+    rise: [0.55, p => ({ o: clamp(p * 1.8), y: (1 - E.out(p)) * 56, b: (1 - E.out(p)) * 10 })],
     fade: [0.45, p => ({ o: E.out(p) })],
     pop: [0.55, p => ({ o: clamp(p * 2.4), s: 0.5 + 0.5 * E.back(p) })],
-    slam: [0.34, p => ({ o: clamp(p * 3), s: 1.35 - 0.35 * E.out(p) })],
-    word: [0.32, p => ({ o: clamp(p * 2.6), y: (1 - E.out(p)) * 30 })],
-    left: [0.5, p => ({ o: clamp(p * 1.8), x: -(1 - E.out(p)) * 80 })],
-    right: [0.5, p => ({ o: clamp(p * 1.8), x: (1 - E.out(p)) * 80 })],
+    slam: [0.34, p => ({ o: clamp(p * 3), s: 1.35 - 0.35 * E.out(p), b: (1 - E.out(p)) * 12 })],
+    word: [0.36, p => ({ o: clamp(p * 2.6), y: (1 - E.out(p)) * 34, s: 0.92 + 0.08 * E.back(p), b: (1 - E.out(p)) * 14 })],
+    left: [0.5, p => ({ o: clamp(p * 1.8), x: -(1 - E.out(p)) * 80, b: (1 - E.out(p)) * 8 })],
+    right: [0.5, p => ({ o: clamp(p * 1.8), x: (1 - E.out(p)) * 80, b: (1 - E.out(p)) * 8 })],
     up: [0.7, p => ({ o: clamp(p * 3), y: (1 - E.expo(p)) * 360 })],
     zoomIn: [0.9, p => ({ o: clamp(p * 2.2), s: 1.08 - 0.08 * E.out(p) })],
     wipe: [0.6, p => ({ clip: `inset(0 ${((1 - E.inout(p)) * 100).toFixed(2)}% 0 0)` })],
@@ -48,7 +51,11 @@
     flipIn: [0.3, p => ({ o: p > 0 ? 1 : 0, sx: E.out(p) })],
     count: [1.1, null],
   };
-  const TF = new Set(['rise', 'pop', 'slam', 'word', 'left', 'right', 'up', 'zoomIn', 'grow', 'stamp', 'flipIn']);
+  const TF = new Set(['rise', 'pop', 'slam', 'word', 'left', 'right', 'up', 'zoomIn', 'grow', 'stamp', 'flipIn', 'count']);
+  const BLUR = new Set(['rise', 'slam', 'word', 'left', 'right']);
+  /* Ease for continuous moves: a gentle sine in and out */
+  const sine = p => 0.5 - 0.5 * Math.cos(Math.PI * clamp(p));
+  const bump = p => (p <= 0 || p >= 1 ? 0 : Math.sin(Math.PI * p));
 
   function fmtNum(v, c) {
     const fixed = v.toFixed(c.dec);
@@ -62,30 +69,39 @@
   const secEls = $$('.scene', rf);
   const REG = secEls.map(sec => {
     const items = [];
-    $$('[data-a],[data-dim],[data-on],[data-out]', sec).forEach(el => {
+    $$('[data-a],[data-dim],[data-on],[data-out],[data-pulse]', sec).forEach(el => {
       const d = el.dataset;
+      /* Illustrations keep floating gently once they are in, each at its own phase */
+      const idle = MOTION && el.classList.contains('r-ill') && d.a ? (items.length % 5) * 1.3 : null;
       items.push({
         el, a: d.a || null, t: Number(d.t) || 0, l: d.l ? Number(d.l) : null,
         dim: d.dim !== undefined ? Number(d.dim) : null, on: d.on !== undefined ? Number(d.on) : null, off: d.off !== undefined ? Number(d.off) : null, out: d.out !== undefined ? Number(d.out) : null,
         cnt: d.a === 'count' ? { to: Number(d.to) || 0, dec: Number(d.dec) || 0, pre: d.pre || '', suf: d.suf || '', sep: d.sep === '1', last: null } : null,
-        tf: TF.has(d.a) || d.out !== undefined,
+        tf: TF.has(d.a) || d.out !== undefined || d.pulse !== undefined || idle !== null,
+        blur: MOTION && BLUR.has(d.a),
+        pulse: MOTION && d.pulse !== undefined ? Number(d.pulse) : null,
+        idle,
       });
     });
-    return { sec, items, kb: $$('[data-kb]', sec), vids: $$('video.md-el', sec), ills: $$('.ill', sec).map(ill => ({ t: Number(ill.dataset.t) || 0, paths: $$('.ad-draw', ill) })), anims: null, vis: !sec.hidden, tau: 0, fx: false };
+    const bd = $$('.bd > i', sec);
+    return { sec, bd, items, kb: $$('[data-kb]', sec), vids: $$('video.md-el', sec), ills: $$('.ill', sec).map(ill => ({ t: Number(ill.dataset.t) || 0, paths: $$('.ad-draw', ill) })), anims: null, vis: !sec.hidden, tau: 0, fx: false };
   });
+  let still = false;
 
   function drawScene(i, tau) {
     const R = REG[i], dur = SC[i].dur;
     R.tau = tau;
     for (const d of R.items) {
       const el = d.el, st = el.style;
-      let o = 1, x = 0, y = 0, s = 1, sx = 1, r = null, clip = null, dash = null, bg = null;
+      let o = 1, x = 0, y = 0, s = 1, sx = 1, r = null, clip = null, dash = null, bg = null, blur = 0;
       if (d.a) {
-        const pr = P[d.a] || P.fade, p = clamp((tau - d.t) / (d.l || pr[0]));
+        const len = d.l || (P[d.a] || P.fade)[0], pr = P[d.a] || P.fade, p = clamp((tau - d.t) / len);
         if (d.cnt) {
           const txt = fmtNum(d.cnt.to * E.out5(p), d.cnt);
           if (txt !== d.cnt.last) { el.textContent = txt; d.cnt.last = txt; }
           o = clamp(p * 6);
+          /* A small bounce when the figure lands */
+          if (MOTION && !still) s *= 1 + 0.07 * bump((tau - d.t - len) / 0.32);
         } else {
           const q = pr[1](p);
           if (q.o !== undefined) o = q.o;
@@ -97,8 +113,17 @@
           if (q.clip !== undefined) clip = q.clip;
           if (q.dash !== undefined) dash = q.dash;
           if (q.bg !== undefined) bg = q.bg;
+          if (q.b !== undefined) blur = q.b;
+        }
+        if (!still && d.idle !== null && p >= 1) {
+          const w = clamp((tau - d.t - len) / 0.6), ph = tau / 3.4 * Math.PI * 2 + d.idle;
+          y += Math.sin(ph) * 8 * w;
+          r = (r || 0) + Math.sin(ph * 0.5) * 1.2 * w;
         }
       }
+      /* The words of a highlighted phrase hop once when the marker lands (a hop, not a zoom: growing words would
+         swallow the spaces between them) */
+      if (!still && d.pulse !== null) { const h = bump((tau - d.pulse) / 0.34); y -= 12 * h; s *= 1 + 0.025 * h; }
       if (d.dim !== null) o *= 1 - 0.6 * E.out(clamp((tau - d.dim) / 0.3));
       if (d.out !== null) { const p = clamp((tau - d.out) / 0.24); sx *= 1 - E.inout(p); if (p >= 1) o = 0; }
       if (d.on !== null) el.classList.toggle('is-on', tau >= d.on && !(d.off !== null && tau >= d.off));
@@ -114,6 +139,31 @@
         st.transform = tf.join(' ');
       }
       st.opacity = o < 0.999 ? o.toFixed(3) : '';
+      if (d.blur) st.filter = blur > 0.2 ? `blur(${blur.toFixed(2)}px)` : '';
+    }
+    /* Camera: the content drifts slowly around the middle of its zone, so nothing ever sits fully still
+       (CSS variables read by .cz; checks and stills measure it at rest) */
+    const sc = SC[i], u = sine(tau / Math.max(1, dur)), ss = R.sec.style;
+    let cx = 0, cy = 0, cs = 1;
+    if (!still && sc.cam) {
+      if (sc.cam === 'push') cs = 1 + 0.03 * u;
+      else if (sc.cam === 'pull') cs = 1.03 - 0.03 * u;
+      else if (sc.cam === 'left') { cx = 14 - 28 * u; cs = 1.015; }
+      else if (sc.cam === 'right') { cx = -14 + 28 * u; cs = 1.015; }
+      else if (sc.cam === 'rise') { cy = 10 - 24 * u; cs = 1.015; }
+      else if (sc.cam === 'punch') cs = 1 + 0.12 * (1 - E.out(clamp(tau / 0.7))) + 0.02 * u;
+    }
+    if (cs !== 1 || cx || cy) { ss.setProperty('--cam-x', cx.toFixed(2) + 'px'); ss.setProperty('--cam-y', cy.toFixed(2) + 'px'); ss.setProperty('--cam-s', cs.toFixed(4)); }
+    else if (ss.getPropertyValue('--cam-s')) { ss.removeProperty('--cam-x'); ss.removeProperty('--cam-y'); ss.removeProperty('--cam-s'); }
+    /* Backdrop shapes move on their own slow clock */
+    if (R.bd.length) {
+      const t = still ? 0 : tau;
+      R.bd.forEach((el, k) => {
+        const dir = k % 2 ? -1 : 1;
+        if (sc.bd === 'ring') el.style.transform = `rotate(${(t * 9 * dir).toFixed(2)}deg) scale(${(1 + 0.04 * Math.sin(t * 0.9 + k)).toFixed(4)})`;
+        else if (sc.bd === 'dots') el.style.transform = `translate3d(${(-t * 6 * dir).toFixed(2)}px, ${(-t * 10).toFixed(2)}px, 0px)`;
+        else el.style.transform = `translate3d(${(Math.sin(t * 0.45 + k * 2) * 40).toFixed(2)}px, ${(Math.cos(t * 0.38 + k) * 30).toFixed(2)}px, 0px) scale(${(1 + 0.05 * Math.sin(t * 0.6 + k)).toFixed(4)})`;
+      });
     }
     /* Foto bergerak pelan sepanjang adegan */
     const q = clamp(tau / Math.max(1, dur));
@@ -136,10 +186,26 @@
   }
 
   /* Transisi masuk adegan berikutnya, di atas adegan sebelumnya */
+  const panel = $('#trPanel'), stripes = panel ? $$('i', panel) : [];
+  const TR_BANDS = [[0, 0.45, 0.55, 1], [0.1, 0.5, 0.5, 0.88]];
   function trans(ai, bi, p, type) {
     const a = REG[ai].sec.style, b = REG[bi].sec.style, e = E.inout(p), ex = E.expo(p);
     a.zIndex = '1'; b.zIndex = '2';
-    a.transform = ''; a.opacity = ''; a.clipPath = ''; b.transform = ''; b.opacity = ''; b.clipPath = '';
+    a.transform = ''; a.opacity = ''; a.clipPath = ''; a.filter = ''; b.transform = ''; b.opacity = ''; b.clipPath = ''; b.filter = '';
+    if (type !== 'color' && panel && !panel.hidden) panel.hidden = true;
+    if (type === 'color') {
+      /* Two brand-colour bands sweep across, the second inside the first: the next scene is swapped in while
+         both cover the frame */
+      panel.hidden = false;
+      stripes.forEach((el, k) => {
+        const [a0, a1, b0, b1] = TR_BANDS[k], x = p < 0.5 ? -100 + 100 * E.inout(clamp((p - a0) / (a1 - a0))) : 100 * E.inout(clamp((p - b0) / (b1 - b0)));
+        el.style.transform = `translate3d(${x.toFixed(2)}%, 0px, 0px) skewX(-8deg)`;
+      });
+      if (p < 0.5) b.opacity = '0'; else a.opacity = '0';
+    }
+    else if (type === 'whip') { b.transform = `translate3d(${((1 - ex) * W).toFixed(1)}px, 0px, 0px)`; a.transform = `translate3d(${(-ex * W).toFixed(1)}px, 0px, 0px)`; const bl = (1 - Math.abs(2 * p - 1)) * 26; a.filter = b.filter = `blur(${bl.toFixed(1)}px)`; }
+    else if (type === 'zoomthru') { a.transform = `scale(${(1 + 0.4 * e).toFixed(4)})`; a.opacity = (1 - e).toFixed(3); a.filter = `blur(${(e * 18).toFixed(1)}px)`; b.transform = `scale(${(0.8 + 0.2 * E.out(p)).toFixed(4)})`; b.opacity = clamp(p * 2).toFixed(3); b.filter = `blur(${((1 - E.out(p)) * 18).toFixed(1)}px)`; }
+    else if (type === 'split') b.clipPath = `inset(${((1 - e) * 50).toFixed(2)}% 0 ${((1 - e) * 50).toFixed(2)}% 0)`;
     if (type === 'up') { b.transform = `translate3d(0px, ${((1 - ex) * H).toFixed(1)}px, 0px)`; a.transform = `translate3d(0px, ${(-ex * H * 0.22).toFixed(1)}px, 0px)`; }
     else if (type === 'slide') { b.transform = `translate3d(${((1 - ex) * W).toFixed(1)}px, 0px, 0px)`; a.transform = `translate3d(${(-ex * W * 0.3).toFixed(1)}px, 0px, 0px)`; }
     else if (type === 'wipe') b.clipPath = `inset(0 ${((1 - e) * 100).toFixed(2)}% 0 0)`;
@@ -151,7 +217,7 @@
   function untrans(i) {
     const R = REG[i];
     if (!R.fx) return;
-    Object.assign(R.sec.style, { transform: '', opacity: '', clipPath: '', zIndex: '' });
+    Object.assign(R.sec.style, { transform: '', opacity: '', clipPath: '', zIndex: '', filter: '' });
     R.fx = false;
   }
 
@@ -174,6 +240,10 @@
     if (!c) { if (capL.firstChild) capL.replaceChildren(); capKey = ''; return; }
     let now = -1;
     c.words.forEach((w, k) => { if (tau >= w.s - 0.04) now = k; });
+    /* Each new line pops in */
+    const pc = still ? 1 : clamp((tau - c.s + 0.04) / 0.2);
+    capL.style.transform = pc < 1 ? `translate3d(0px, ${((1 - E.out(pc)) * 18).toFixed(1)}px, 0px) scale(${(0.88 + 0.12 * E.back(pc)).toFixed(4)})` : '';
+    capL.style.opacity = pc < 1 ? clamp(pc * 2.5).toFixed(3) : '';
     const key = c.s + ':' + now;
     if (key === capKey) return;
     capKey = key;
@@ -209,11 +279,12 @@
     });
     drawScene(i, tau);
     if (tr >= 0) { drawScene(tr, SC[tr].dur + tau); trans(tr, i, tau / s.trLen, s.tr); }
-    else untrans(i);
+    else { untrans(i); if (panel && !panel.hidden) panel.hidden = true; }
     /* Header (logo dan handle) di setiap adegan, ikut warna adegan yang dominan; di atas footage memakai kartu */
     const p = tr >= 0 ? E.inout(tau / s.trLen) : 1;
     headerFor(tr >= 0 && p < 0.5 ? SC[tr] : s);
-    captions(i, tau, tr < 0 || tau > s.trLen * 0.6);
+    /* Subtitles return once the next scene shows (a colour sweep covers the frame longer) */
+    captions(i, tau, tr < 0 || tau > s.trLen * (s.tr === 'color' ? 0.85 : 0.6));
     if (k !== lastK) { lastK = k; onScene(k); }
     ui();
   }
@@ -279,8 +350,47 @@
     seq.forEach((i, k) => { const v = SC[i].vo; if (v && v.id) out.push({ id: v.id, at: starts[k] + v.at, gain: 1 }); });
     return out;
   }
+  /* Sound effects drawn in Web Audio (no files): a soft whoosh on each transition and a light pop when cards and
+     badges land. Quiet, under the voice, the same in the player and in the MP4. */
+  function sfxPlan() {
+    if (!DATA.sfx) return [];
+    const out = [];
+    seq.forEach((i, k) => {
+      if (k > 0 && SC[i].tr !== 'cut') out.push({ kind: 'whoosh', at: starts[k] - 0.04, len: Math.max(0.3, SC[i].trLen + 0.15) });
+      (SC[i].pops || []).forEach(t => out.push({ kind: 'pop', at: starts[k] + t }));
+    });
+    return out;
+  }
+  function scheduleSfx(ctx, dest, from, when) {
+    const list = [], plan = sfxPlan();
+    if (!plan.length) return list;
+    const noise = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.8), ctx.sampleRate), ch = noise.getChannelData(0);
+    for (let k = 0; k < ch.length; k++) ch[k] = Math.random() * 2 - 1;
+    for (const f of plan) {
+      const t0 = when + f.at - from;
+      if (t0 < when - 0.01) continue;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0);
+      g.connect(dest);
+      if (f.kind === 'whoosh') {
+        const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter();
+        src.buffer = noise; bp.type = 'bandpass'; bp.Q.value = 1.1;
+        bp.frequency.setValueAtTime(320, t0); bp.frequency.exponentialRampToValueAtTime(2600, t0 + f.len);
+        g.gain.linearRampToValueAtTime(0.75, t0 + f.len * 0.45); g.gain.linearRampToValueAtTime(0, t0 + f.len);
+        src.connect(bp); bp.connect(g); src.start(t0, 0, f.len + 0.05);
+        list.push(src);
+      } else {
+        const o = ctx.createOscillator();
+        o.type = 'sine'; o.frequency.setValueAtTime(920, t0); o.frequency.exponentialRampToValueAtTime(540, t0 + 0.07);
+        g.gain.linearRampToValueAtTime(0.06, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.09);
+        o.connect(g); o.start(t0); o.stop(t0 + 0.1);
+        list.push(o);
+      }
+    }
+    return list;
+  }
   function scheduleInto(ctx, dest, plan, from, when, bufs) {
-    const list = [];
+    const list = scheduleSfx(ctx, dest, from, when);
     /* Voice a little under full scale (about -1 dB), so loud TTS peaks do not clip in the AAC encoder */
     const voice = ctx.createGain();
     voice.gain.value = 0.89;
@@ -529,11 +639,15 @@
     box('g-cap', ZN.caption.x, ZN.caption.y, ZN.caption.w, ZN.caption.h, 'Subtitle (menempel di batas bawah)');
   })();
   function showOnly(i, tau) {
+    /* Checks and previews measure the settled layout, without camera drift or floating */
+    still = true;
+    if (panel) panel.hidden = true;
     REG.forEach((R, j) => { const v = j === i; if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; } untrans(j); });
     drawScene(i, tau);
     capKey = '';
     captions(i, tau, true);
     headerFor(SC[i]);
+    still = false;
   }
   function measure(i) {
     showOnly(i, SC[i].settle);

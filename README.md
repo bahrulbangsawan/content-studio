@@ -8,7 +8,7 @@ Skill Claude dan CLI untuk membuat konten edukasi Instagram dalam dua format:
   - voice over Gemini 3.8 Flash TTS
   - subtitle yang menyorot kata yang sedang diucapkan
   - ilustrasi dan angka bergerak
-  - footage stok dari Magnific atau Pexels
+  - footage stok dari Magnific atau Pexels, dan foto berlisensi terbuka dari Openverse tanpa key
   - sumber ilmiah yang diverifikasi di PubMed dan Crossref
 
 Setiap postingan dibangun menjadi satu halaman studio HTML mandiri. Untuk carousel, halaman itu berisi:
@@ -112,7 +112,7 @@ Tanpa memasang global, perintah yang sama bisa dijalankan dengan `node ~/.claude
 | `ig <link>` | Unduh foto, video, dan caption postingan Instagram |
 | `transcribe <video, folder, atau link>` | Video ke teks, SRT, dan waktu per kata (OpenAI atau Gemini) |
 | `evidence search "<topik>"`, `cite`, `verify` | Cari tinjauan sistematis di PubMed, buat entri sumber, cek sumber |
-| `footage search "<kata kunci>"`, `get` | Footage dan foto stok tegak dari Magnific atau Pexels, dengan lembar kontak dan kredit |
+| `footage search "<kata kunci>"`, `get` | Footage dan foto stok tegak dari Magnific atau Pexels, foto Openverse tanpa key, dengan lembar kontak dan kredit |
 | `new <slug> --reel`, `voice <slug>` | Reel baru, voice over Gemini per adegan |
 | `scan`, `build`, `verify`, `check <slug>` | Aturan isi, halaman studio, cek tata letak di Chrome |
 | `export <slug>` | MP4, cover, SRT, dan caption ke `posts/<slug>/export/` |

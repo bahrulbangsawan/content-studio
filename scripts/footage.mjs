@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Stock footage and photos for reels. Search Magnific (formerly Freepik; API needs a paid plan) or Pexels
-// (free key), look at the numbered contact sheet, then download one into posts/<slug>/media/, cut to fit
-// (1080 x 1920 or its own shape, short, no sound, H.264) and credited in media/credits.json.
-// Usage: node footage.mjs search "<kata kunci, sebaiknya bahasa Inggris>" [--type video|photo] [--provider magnific|pexels]
+// Stock footage and photos for reels. Search Magnific (formerly Freepik; API needs a paid plan), Pexels (free
+// key) or, for photos without any key, Openverse (openly licensed: CC0, public domain, CC BY). Look at the
+// numbered contact sheet, then download one into posts/<slug>/media/, cut to fit (1080 x 1920 or its own shape,
+// short, no sound, H.264) and credited in media/credits.json.
+// Usage: node footage.mjs search "<kata kunci, sebaiknya bahasa Inggris>" [--type video|photo] [--provider magnific|pexels|openverse]
 //                                [--n 12] [--any-shape] [--free]
 //        node footage.mjs get <provider>:<id> --slug <slug> [--name nama.mp4] [--start 2] [--length 8] [--fit cover|keep]
 //        node footage.mjs fit <slug> <berkas> [--start s] [--length s] [--fit cover|keep]   perkecil berkas yang sudah ada
@@ -25,16 +26,24 @@ const HELP = 'Pakai: node footage.mjs search "<kata kunci>" | get <provider>:<id
 if (!cmd) fail(HELP);
 const MAG = () => process.env.CONTENT_STUDIO_MAGNIFIC_BASE || 'https://api.magnific.com';
 const PEX = () => process.env.CONTENT_STUDIO_PEXELS_BASE || 'https://api.pexels.com';
+const OV = () => process.env.CONTENT_STUDIO_OPENVERSE_BASE || 'https://api.openverse.org';
+const NAMES = { magnific: 'Magnific', pexels: 'Pexels', openverse: 'Openverse' };
 
-function pickProvider(want) {
+function pickProvider(want, type) {
   const p = want || get('footage.provider');
+  if (p === 'openverse') {
+    if (type === 'video') fail('Openverse hanya punya foto. Untuk video pakai Pexels (key gratis) atau Magnific: content-studio setup', 2);
+    return p;
+  }
   if (p === 'magnific' || p === 'pexels') {
-    if (!get(`${p}.apiKey`)) fail(`${p === 'magnific' ? 'Magnific' : 'Pexels'} butuh API key. Simpan dengan: content-studio setup   (atau: content-studio config set ${p}.apiKey)`, 2);
+    if (!get(`${p}.apiKey`)) fail(`${NAMES[p]} butuh API key. Simpan dengan: content-studio setup   (atau: content-studio config set ${p}.apiKey)`, 2);
     return p;
   }
   if (get('magnific.apiKey')) return 'magnific';
   if (get('pexels.apiKey')) return 'pexels';
-  fail('Pencarian footage butuh API key Magnific (berbayar) atau Pexels (gratis: https://www.pexels.com/api/). Simpan dengan: content-studio setup', 2);
+  /* Photos still work without a key */
+  if (type === 'photo') return 'openverse';
+  fail('Pencarian video butuh API key Magnific (berbayar) atau Pexels (gratis: https://www.pexels.com/api/). Simpan dengan: content-studio setup. Foto bisa dicari tanpa key: --type photo memakai Openverse.', 2);
 }
 const magH = () => ({ 'x-magnific-api-key': get('magnific.apiKey'), 'accept-language': 'en-US' });
 const pexH = () => ({ authorization: get('pexels.apiKey') });
@@ -77,6 +86,20 @@ async function searchPexels(q, type, n, { vertical }) {
   return (data.photos || []).map(p => ({ provider: 'pexels', id: String(p.id), kind: 'photo', title: p.alt || '', width: p.width, height: p.height, thumb: (p.src && (p.src.medium || p.src.small)) || '', url: p.url, author: p.photographer || '', premium: false }));
 }
 
+/* Openverse: openly licensed photos from Flickr, Wikimedia Commons and museums, no key. Only licences that allow
+   commercial use and changes without share-alike: CC0, the public domain mark and CC BY (credit required).
+   Openverse allows a handful of anonymous searches a minute; http.mjs waits and retries on 429. */
+const OV_LICENSES = 'cc0,pdm,by';
+/* Openverse cannot draw thumbnails for Wikimedia files; Wikimedia serves its own in fixed widths (500 is one) */
+const wmThumb = u => { const m = String(u || '').match(/^(https:\/\/upload\.wikimedia\.org\/wikipedia\/commons)\/([0-9a-f]\/[0-9a-f]{2})\/([^/]+)$/); return m ? `${m[1]}/thumb/${m[2]}/${m[3]}/500px-${m[3]}` : ''; };
+const ovLicense = r => (r.license === 'cc0' ? 'CC0' : r.license === 'pdm' ? 'Domain publik' : `CC ${String(r.license || '').toUpperCase()} ${r.license_version || ''}`.trim());
+async function searchOpenverse(q, n, { vertical }) {
+  const qs = new URLSearchParams({ q, license: OV_LICENSES, page_size: String(Math.min(20, n)), mature: 'false' });
+  if (vertical) qs.set('aspect_ratio', 'tall');
+  const { data } = await request('Openverse', `${OV()}/v1/images/?${qs}`, { timeout: 45000, retries: 4 });
+  return ((data && data.results) || []).map(r => ({ provider: 'openverse', id: r.id, kind: 'photo', title: r.title || '', width: r.width || 0, height: r.height || 0, thumb: wmThumb(r.url) || r.thumbnail || r.url || '', url: r.foreign_landing_url || '', author: r.creator || '', license: ovLicense(r), source: r.source || '', premium: false }));
+}
+
 /* A numbered contact sheet, drawn in headless Chrome, so the pictures can be looked at before choosing */
 async function contactSheet(items, dir, title) {
   const thumbs = [];
@@ -87,8 +110,8 @@ async function contactSheet(items, dir, title) {
   }));
   const chrome = findChrome();
   if (!chrome || !thumbs.some(Boolean)) return null;
-  const cards = items.map((it, k) => `<figure><div class="im">${thumbs[k] ? `<img src="${pathToFileURL(thumbs[k]).href}">` : ''}<b>${k + 1}</b>${it.premium ? '<i>premium</i>' : ''}</div><figcaption>${it.kind === 'video' ? `${Math.round(it.duration)} dtk · ` : ''}${it.width && it.height ? `${it.width}×${it.height}` : ''}<br>${esc((it.title || '').slice(0, 40))}</figcaption></figure>`).join('');
-  const html = `<!doctype html><meta charset="utf-8"><style>body{margin:0;padding:24px;background:#f4f4f2;font:14px/18px system-ui,sans-serif;color:#222}h1{font-size:18px;margin:0 0 16px}main{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}figure{margin:0}.im{position:relative;aspect-ratio:9/16;background:#ddd;border-radius:8px;overflow:hidden}img{width:100%;height:100%;object-fit:cover}b{position:absolute;left:8px;top:8px;min-width:30px;height:30px;padding:0 6px;border-radius:15px;background:#111;color:#fff;display:grid;place-items:center;font-size:16px}i{position:absolute;right:8px;top:8px;padding:2px 8px;border-radius:10px;background:#E9A23B;color:#13233A;font-style:normal;font-size:12px}figcaption{margin-top:6px;color:#555}</style><h1>${esc(title)}</h1><main>${cards}</main>`;
+  const cards = items.map((it, k) => `<figure><div class="im">${thumbs[k] ? `<img src="${pathToFileURL(thumbs[k]).href}">` : ''}<b>${k + 1}</b>${it.premium ? '<i>premium</i>' : ''}</div><figcaption>${it.kind === 'video' ? `${Math.round(it.duration)} dtk · ` : ''}${it.width && it.height ? `${it.width}×${it.height}` : ''}${it.license ? ` · ${esc(it.license)}` : ''}<br>${esc((it.title || '').slice(0, 40))}</figcaption></figure>`).join('');
+  const html = `<!doctype html><meta charset="utf-8"><style>body{margin:0;padding:24px;background:#f4f4f2;font:14px/18px system-ui,sans-serif;color:#222}h1{font-size:18px;margin:0 0 16px}main{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}figure{margin:0}.im{position:relative;aspect-ratio:9/16;background:#ddd;border-radius:8px;overflow:hidden}img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}b{position:absolute;left:8px;top:8px;min-width:30px;height:30px;padding:0 6px;border-radius:15px;background:#111;color:#fff;display:grid;place-items:center;font-size:16px}i{position:absolute;right:8px;top:8px;padding:2px 8px;border-radius:10px;background:#E9A23B;color:#13233A;font-style:normal;font-size:12px}figcaption{margin-top:6px;color:#555}</style><h1>${esc(title)}</h1><main>${cards}</main>`;
   const page = join(dir, 'sheet.html'), png = join(dir, 'sheet.png');
   writeFileSync(page, html);
   const b = await launch(chrome, { width: 1200, height: 900 });
@@ -104,6 +127,10 @@ async function contactSheet(items, dir, title) {
 
 /* ---------------- Download and fit ---------------- */
 async function sourceUrl(provider, id, kind) {
+  if (provider === 'openverse') {
+    const { data: r } = await request('Openverse', `${OV()}/v1/images/${id}/`, { timeout: 45000, retries: 4 });
+    return { url: r.url, meta: { title: r.title, author: r.creator, url: r.foreign_landing_url, license: ovLicense(r), licenseUrl: r.license_url, w: r.width, h: r.height } };
+  }
   if (provider === 'pexels') {
     if (kind === 'photo') { const { data } = await request('Pexels', `${PEX()}/v1/photos/${id}`, { headers: pexH() }); return { url: data.src.original || data.src.large2x, meta: { title: data.alt, author: data.photographer, url: data.url, w: data.width, h: data.height } }; }
     const { data } = await request('Pexels', `${PEX()}/videos/videos/${id}`, { headers: pexH() });
@@ -163,30 +190,31 @@ try {
     const q = args._.slice(1).join(' ') || args.q;
     if (!q) fail('Pakai: node footage.mjs search "<kata kunci>" [--type video|photo]');
     const type = args.type === 'photo' ? 'photo' : 'video', n = Math.min(30, Number(args.n) || 12);
-    const provider = pickProvider(args.provider);
+    const provider = pickProvider(args.provider, type);
     const opts = { vertical: !args['any-shape'], free: !!args.free };
-    const items = provider === 'magnific' ? await searchMagnific(q, type, n, opts) : await searchPexels(q, type, n, opts);
+    const items = provider === 'magnific' ? await searchMagnific(q, type, n, opts) : provider === 'openverse' ? await searchOpenverse(q, n, opts) : await searchPexels(q, type, n, opts);
     const dir = join(root, 'refs', 'footage', `${slugify(q)}-${provider}-${type}`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'results.json'), JSON.stringify({ query: q, provider, type, at: new Date().toISOString(), items }, null, 1) + '\n');
-    console.log(`\n${items.length} ${type === 'video' ? 'video' : 'foto'} dari ${provider === 'magnific' ? 'Magnific' : 'Pexels'} untuk "${q}"${opts.vertical ? ', tegak' : ''}:\n`);
-    items.forEach((it, k) => console.log(`  ${String(k + 1).padStart(2)}. ${it.provider}:${it.id}  ${it.kind === 'video' ? `${String(Math.round(it.duration)).padStart(3)} dtk  ` : ''}${it.width && it.height ? `${it.width}x${it.height}  ` : ''}${it.premium ? 'premium  ' : ''}${(it.title || '').slice(0, 50)}${it.author ? ` · ${it.author}` : ''}`));
+    console.log(`\n${items.length} ${type === 'video' ? 'video' : 'foto'} dari ${NAMES[provider]} untuk "${q}"${opts.vertical ? ', tegak' : ''}:\n`);
+    items.forEach((it, k) => console.log(`  ${String(k + 1).padStart(2)}. ${it.provider}:${it.id}  ${it.kind === 'video' ? `${String(Math.round(it.duration)).padStart(3)} dtk  ` : ''}${it.width && it.height ? `${it.width}x${it.height}  ` : ''}${it.premium ? 'premium  ' : ''}${it.license ? `${it.license}  ` : ''}${(it.title || '').slice(0, 50)}${it.author ? ` · ${it.author}` : ''}`));
     if (!items.length) console.log('  Tidak ada hasil. Coba kata kunci bahasa Inggris yang lebih umum, atau --any-shape.');
     const sheet = items.length ? await contactSheet(items, dir, `${q} · ${provider} · ${type}`) : null;
     if (sheet) console.log(`\n  Lembar kontak: ${relative(process.cwd(), sheet)} (lihat gambarnya sebelum memilih)`);
     console.log(`  Ambil: content-studio footage get ${items[0] ? `${items[0].provider}:${items[0].id}` : '<provider>:<id>'} --slug <slug> [--length 8]\n`);
     if (provider === 'magnific') console.log('  Lisensi Magnific: paket berbayar boleh dipakai komersial tanpa atribusi; aset gratis di paket Free hanya untuk pribadi dan wajib atribusi.\n');
+    if (provider === 'openverse') console.log('  Openverse: CC0, domain publik, atau CC BY (kredit wajib, tercatat otomatis). Lisensi ini tidak mencakup izin orang di foto:\n  untuk anak dan pasien, pilih foto tanpa wajah yang jelas (dari belakang, tangan, kaki, mainan). Foto milik akun tetap paling baik.\n');
   } else if (cmd === 'get') {
     const ref = args._[1], slug = args.slug;
-    const m = String(ref || '').match(/^(magnific|pexels|freepik):(\d+)$/);
-    if (!m || !slug) fail('Pakai: node footage.mjs get <magnific|pexels>:<id> --slug <slug> [--name nama.mp4] [--start 2] [--length 8]');
+    const m = String(ref || '').match(/^(magnific|pexels|freepik):(\d+)$/) || String(ref || '').match(/^(openverse):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/);
+    if (!m || !slug) fail('Pakai: node footage.mjs get <magnific|pexels|openverse>:<id> --slug <slug> [--name nama.mp4] [--start 2] [--length 8]');
     const provider = m[1] === 'freepik' ? 'magnific' : m[1], id = m[2];
-    if (!get(`${provider}.apiKey`)) fail(`${provider} butuh API key. Simpan dengan: content-studio setup`, 2);
+    if (provider !== 'openverse' && !get(`${provider}.apiKey`)) fail(`${provider} butuh API key. Simpan dengan: content-studio setup`, 2);
     const postDir = join(root, 'posts', slug);
     if (!existsSync(postDir)) fail(`posts/${slug} tidak ada.`);
     needFfmpeg('Memotong footage');
     /* The kind comes from --type, else from the search that listed this id */
-    let kind = args.type === 'photo' ? 'photo' : args.type === 'video' ? 'video' : null;
+    let kind = provider === 'openverse' || args.type === 'photo' ? 'photo' : args.type === 'video' ? 'video' : null;
     if (!kind) {
       const fdir = join(root, 'refs', 'footage');
       for (const d of existsSync(fdir) ? readdirSync(fdir) : []) {
@@ -209,8 +237,10 @@ try {
     else { const r = fitVideo(raw, dest, { start: Number(args.start) || 0, length: Number(args.length) || 10, fit: args.fit }); note = `${r.len.toFixed(1).replace('.', ',')} dtk, ${r.mode === 'cover' ? 'dipotong 1080x1920' : 'bentuk asli'}, tanpa suara`; }
     rmSync(raw, { force: true });
     const size = statSync(dest).size;
-    const who = provider === 'pexels' ? `${kind === 'photo' ? 'Foto' : 'Video'}: ${meta.author || 'Pexels'} di Pexels` : `${kind === 'photo' ? 'Foto' : 'Footage'}: ${meta.title || id}${meta.author ? ` oleh ${meta.author}` : ''}, Magnific`;
-    credit(slug, name, { provider, id, kind, title: meta.title || '', author: meta.author || '', url: meta.url || '', license: provider === 'pexels' ? 'Lisensi Pexels' : meta.premium ? 'Magnific premium' : 'Magnific', line: `${who}${meta.url ? ` (${meta.url})` : ''}`, at: new Date().toISOString() });
+    const who = provider === 'pexels' ? `${kind === 'photo' ? 'Foto' : 'Video'}: ${meta.author || 'Pexels'} di Pexels`
+      : provider === 'openverse' ? `Foto: "${meta.title || id}"${meta.author ? ` oleh ${meta.author}` : ''}${meta.url ? ` (${meta.url})` : ''}, ${meta.license}${meta.licenseUrl && !/domain|CC0/i.test(meta.license) ? ` (${meta.licenseUrl})` : ''}, dipotong`
+        : `${kind === 'photo' ? 'Foto' : 'Footage'}: ${meta.title || id}${meta.author ? ` oleh ${meta.author}` : ''}, Magnific`;
+    credit(slug, name, { provider, id, kind, title: meta.title || '', author: meta.author || '', url: meta.url || '', license: provider === 'pexels' ? 'Lisensi Pexels' : provider === 'openverse' ? meta.license : meta.premium ? 'Magnific premium' : 'Magnific', line: provider === 'openverse' ? who : `${who}${meta.url ? ` (${meta.url})` : ''}`, at: new Date().toISOString() });
     console.log(`✓ posts/${slug}/media/${name} (${MB(size)} MB${note ? ', ' + note : ''})`);
     if (size > REEL_MEDIA_MAX[kind === 'photo' ? 'image' : 'video']) console.log(`  ! Lebih dari ${MB(REEL_MEDIA_MAX[kind === 'photo' ? 'image' : 'video'])} MB. Perpendek: content-studio footage fit ${slug} ${name} --length 6`);
     console.log(`  Pakai di reel.json: "media": { "src": "${name}", "alt": "<apa yang terlihat>" }. Kredit tercatat di media/credits.json dan ikut caption.\n`);

@@ -160,11 +160,11 @@
   async function mixAudio(total) {
     const plan = C.audioPlan();
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if ((!plan.length && !DATA.music) || !OAC) return null;
+    if ((!plan.length && !DATA.music && !DATA.sfx) || !OAC) return null;
     await C.audioRaw;
     const oc = new OAC(2, Math.ceil(total * 48000), 48000), bufs = new Map();
     await C.decodeAll(oc, bufs);
-    if (!bufs.size) return null;
+    if (!bufs.size && !DATA.sfx) return null;
     C.scheduleInto(oc, oc.destination, plan, 0, 0, bufs);
     return oc.startRendering();
   }
@@ -232,7 +232,7 @@
   }
   function captionText() {
     const parts = [DATA.caption || DATA.reel.title];
-    if (DATA.sources.length) parts.push('Sumber:\n' + DATA.sources.map(s => `${s.cite || s.short}${s.link ? ' ' + s.link : ''}`).join('\n'));
+    if (DATA.sources.length) parts.push('Sumber:\n' + DATA.sources.map(s => `${s.cite || s.short}${s.link && !String(s.cite || '').includes(s.link) ? ' ' + s.link : ''}`).join('\n'));
     /* Credits for the footage this cut actually shows (the chosen hook and closing) */
     const { seq } = C.plan(), credits = [...new Set(seq.flatMap(i => SC[i].credits || []))];
     if (credits.length) parts.push(credits.join('\n'));
