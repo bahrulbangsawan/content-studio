@@ -1,0 +1,318 @@
+
+  /* ---------- Mode gerak ---------- */
+  function applyMode() {
+    const st = isStatic();
+    document.body.classList.toggle('motion', !st);
+    document.body.classList.toggle('is-static', st);
+    root.style.setProperty('--t', String(T()));
+    clearTimers();
+    if (st) {
+      slides.forEach((s, k) => setIn(k, true));
+      STEPS.forEach((st, k) => stepsRest(k, true));
+    } else {
+      slides.forEach((s, k) => { if (k !== state.cur) snapOut(k); });
+      setIn(state.cur, true);
+      STEPS.forEach((st, k) => stepsRest(k, k === state.cur));
+    }
+    mediaSync();
+    btnReplay.hidden = st;
+    btnPlay.hidden = reduced();
+    if (reduced() && state.auto) setAuto(false);
+    $('#rmNote').hidden = !reduced();
+    $$('input[name="motion"], input[name="speed"]').forEach(r => { r.disabled = reduced() || (r.name === 'speed' && st); });
+    $$('input[name="interval"]').forEach(r => { r.disabled = reduced(); });
+  }
+
+  /* ---------- Pemeriksaan otomatis ---------- */
+  const CHECKS = [
+    { key: 'zone', label: 'Isi di dalam zona konten' },
+    { key: 'bal', label: 'Seimbang atas dan bawah' },
+    { key: 'words', label: `Maksimal ${RULES.maxWordsPerSlide} kata` },
+    { key: 'title', label: 'Panjang judul' },
+    { key: 'min', label: `Teks minimal ${RULES.minTextPx} px` },
+    { key: 'motion', label: 'Masuk diam dalam 1,2 dtk' },
+    { key: 'tap', label: 'Tanpa ajakan mengetuk' },
+  ];
+  /* Postingan Instagram hanya bisa digeser. Kata yang menyuruh pembaca mengetuk gambar, dan elemen yang bisa diklik, tidak boleh ada di slide. */
+  /* "Geser" boleh: menggeser carousel adalah fitur Instagram. Pengecualian kata biasa: tapi, tekanan, sentuhan, bolak-balik. */
+  const TAP_WORDS = /(?:^|[^\p{L}])((?:ketuk|klik|centang|seret)\p{L}*|(?:tekan|sentuh|usap)(?!an)\p{L}*|tap(?!\p{L})|balik(?:kan)?\s+kartu)/iu;
+  const TAP_ELS = 'button, a[href], input, select, textarea, [role="button"], [tabindex], [data-tap]';
+  let results = [];
+  /* Teks setiap simpul dipisah spasi, supaya kata dari dua elemen yang bersebelahan tidak menyatu */
+  function textOf(el) {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), out = [];
+    while (w.nextNode()) out.push(w.currentNode.nodeValue);
+    return out.join(' ');
+  }
+  function measure(i) {
+    const s = slides[i], c = $('.content', s), g = $('.group', s);
+    const ch = c.clientHeight, gh = g.offsetHeight, top = g.offsetTop, bottom = ch - top - gh;
+    const wc = words(textOf(c)), tw = words(textOf($('.ttl', s))), tmax = META[i].titleMax;
+    let minF = Infinity;
+    $$('.canvas *', s).forEach(el => {
+      if (Array.prototype.some.call(el.childNodes, n => n.nodeType === 3 && n.nodeValue.trim())) {
+        const f = parseFloat(getComputedStyle(el).fontSize);
+        if (f < minF) minF = f;
+      }
+    });
+    let end = 0;
+    mEls(i).forEach(el => { end = Math.max(end, Number(el.dataset.d || 0) + Number(el.dataset.dur || 600)); });
+    const tapMatch = textOf($('.canvas', s)).match(TAP_WORDS);
+    const tapWord = tapMatch ? tapMatch[1] : '', tapEls = $$(TAP_ELS, $('.canvas', s)).length;
+    return {
+      top, bottom, wc, tw, tmax, minF, end, tapWord, tapEls,
+      ok: { zone: top >= -1 && gh <= ch + 1, bal: g.classList.contains('g-end') || Math.abs(top - bottom) <= 24, words: wc <= RULES.maxWordsPerSlide, title: tw >= 1 && tw <= tmax, min: minF >= RULES.minTextPx, motion: end <= LIMIT_MS, tap: !tapWord && !tapEls },
+    };
+  }
+  function tip(key, r) {
+    return ({
+      zone: r.ok.zone ? 'Grup muat di zona konten' : 'Grup melewati zona konten',
+      bal: `Atas ${fmt(r.top)} px, bawah ${fmt(r.bottom)} px`,
+      words: `${r.wc} kata`,
+      title: `${r.tw} dari ${r.tmax} kata`,
+      min: `Terkecil ${fmt(r.minF)} px`,
+      motion: `Diam di ${fmt(r.end)} ms`,
+      tap: r.tapWord ? `Ada kata "${r.tapWord}"` : r.tapEls ? `${r.tapEls} elemen bisa diklik` : 'Terbaca tanpa disentuh',
+    })[key];
+  }
+  function buildChecks() {
+    const thead = document.createElement('thead'), hr = document.createElement('tr');
+    const th0 = document.createElement('th');
+    th0.scope = 'col';
+    th0.textContent = 'Slide';
+    hr.appendChild(th0);
+    META.forEach((m, k) => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.dataset.col = String(k);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'colbtn';
+      b.textContent = String(k + 1);
+      b.setAttribute('aria-label', `Buka slide ${k + 1}, ${m.name}`);
+      b.addEventListener('click', () => go(k));
+      th.appendChild(b);
+      hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+    const tbody = document.createElement('tbody');
+    CHECKS.forEach(c => {
+      const tr = document.createElement('tr'), th = document.createElement('th');
+      th.scope = 'row';
+      th.textContent = c.label;
+      tr.appendChild(th);
+      META.forEach((m, k) => {
+        const td = document.createElement('td');
+        td.dataset.col = String(k);
+        const s = document.createElement('span');
+        s.className = 'ck';
+        s.dataset.cell = `${c.key}-${k}`;
+        td.appendChild(s);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    $('#checks').replaceChildren(thead, tbody);
+  }
+  function runChecks() {
+    results = slides.map((s, i) => measure(i));
+    let bad = 0;
+    CHECKS.forEach(c => results.forEach((r, i) => {
+      const ok = r.ok[c.key], cell = $(`[data-cell="${c.key}-${i}"]`);
+      if (!ok) bad++;
+      cell.className = 'ck ' + (ok ? 'ok' : 'bad');
+      cell.title = tip(c.key, r);
+      const sr = document.createElement('span');
+      sr.className = 'sr';
+      sr.textContent = (ok ? 'Lolos. ' : 'Belum lolos. ') + tip(c.key, r);
+      cell.replaceChildren(icon(ok ? 'i-check' : 'i-x'), sr);
+    }));
+    const pill = $('#checkPill');
+    pill.className = 'status ' + (bad ? 'bad' : 'ok');
+    pill.replaceChildren(icon(bad ? 'i-alert' : 'i-circle-check'), Object.assign(document.createElement('span'), { textContent: bad ? `${bad} masalah` : 'Semua lolos' }));
+    renderCheckDetail();
+  }
+  function renderCheckDetail() {
+    const r = results[state.cur];
+    if (!r) return;
+    const el = $('#checkDetail');
+    const b = document.createElement('b');
+    b.textContent = `Slide ${state.cur + 1}, ${META[state.cur].name}: `;
+    el.replaceChildren(b, document.createTextNode(`${r.wc} kata, judul ${r.tw} dari ${r.tmax} kata, jarak atas ${fmt(r.top)} px dan bawah ${fmt(r.bottom)} px, teks terkecil ${fmt(r.minF)} px, masuk diam di ${fmt(r.end)} ms, ${r.ok.tap ? 'terbaca tanpa disentuh' : 'masih ada ajakan mengetuk'}.`));
+  }
+
+  /* ---------- Sinkron antarmuka ---------- */
+  function syncUI() {
+    const i = state.cur;
+    $$('.dot', dotsEl).forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
+    btnPrev.disabled = i === 0;
+    btnNext.disabled = i === N - 1;
+    nowN.textContent = `${i + 1}/${N}`;
+    if (nowName.textContent !== META[i].name) {
+      nowName.classList.add('swap-out');
+      setTimeout(() => { nowName.textContent = META[i].name; nowName.classList.remove('swap-out'); }, 150);
+    }
+    $$('#checks [data-col]').forEach(el => el.classList.toggle('is-cur', Number(el.dataset.col) === i));
+    $$('.colbtn').forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
+    renderCheckDetail();
+    $$('.fnode').forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
+    colorFlow();
+    $('#fdName').textContent = `${i + 1}. ${META[i].name}`;
+    $('#fdGoal').textContent = META[i].goal;
+    $('#fdVisual').textContent = META[i].visual;
+    $('#fdTitle').textContent = `Maksimal ${META[i].titleMax} kata`;
+    $('#fdTheme').textContent = META[i].theme;
+    renderTimeline();
+    $$('.comp').forEach(c => c.classList.toggle('here', c.dataset.slides.split(',').map(Number).includes(i)));
+    syncAltDock();
+    if (!dlPop.hidden) syncDl();
+  }
+
+  /* ---------- Diagram alur ---------- */
+  const flowWrap = $('#flowWrap'), flowLines = $('#flowLines');
+  function drawFlow() {
+    if (!flowWrap.offsetWidth) return;
+    const box = flowWrap.getBoundingClientRect();
+    const th = $$('.fnode .th', flowWrap).map(t => {
+      const r = t.getBoundingClientRect();
+      return { l: r.left - box.left, r: r.right - box.left, cx: (r.left + r.right) / 2 - box.left, cy: (r.top + r.bottom) / 2 - box.top };
+    });
+    const g = 8, bend = 26, f = n => n.toFixed(1);
+    /* Ular tiga kolom: dalam satu baris garis lurus, pindah baris lewat lengkung di sisi tempat baris berakhir */
+    const d = [];
+    for (let k = 0; k + 1 < th.length; k++) {
+      const a = th[k], b = th[k + 1];
+      if (Math.abs(a.cy - b.cy) < 2) {
+        d.push(b.cx > a.cx ? `M${f(a.r + g)} ${f(a.cy)} H${f(b.l - g)}` : `M${f(a.l - g)} ${f(a.cy)} H${f(b.r + g)}`);
+      } else if (a.cx > box.width / 2) {
+        d.push(`M${f(a.r + g)} ${f(a.cy)} C${f(a.r + g + bend)} ${f(a.cy)} ${f(b.r + g + bend)} ${f(b.cy)} ${f(b.r + g)} ${f(b.cy)}`);
+      } else {
+        d.push(`M${f(a.l - g)} ${f(a.cy)} C${f(a.l - g - bend)} ${f(a.cy)} ${f(b.l - g - bend)} ${f(b.cy)} ${f(b.l - g)} ${f(b.cy)}`);
+      }
+    }
+    flowLines.setAttribute('viewBox', `0 0 ${f(box.width)} ${f(box.height)}`);
+    $$(':scope > path', flowLines).forEach((p, k) => p.setAttribute('d', d[k]));
+  }
+  function colorFlow() {
+    $$(':scope > path', flowLines).forEach((p, k) => {
+      const done = k + 1 <= state.cur;
+      p.classList.toggle('done', done);
+      p.setAttribute('marker-end', done ? 'url(#fa-a)' : 'url(#fa-m)');
+    });
+  }
+  $$('.fnode').forEach(b => b.addEventListener('click', () => go(Number(b.dataset.go))));
+
+  /* ---------- Garis waktu masuk ---------- */
+  const tlRows = $('#tlRows'), tlOver = $('#tlOver'), tlHead = $('#tlHead');
+  function renderTimeline() {
+    const i = state.cur, frag = document.createDocumentFragment();
+    let end = 0;
+    $('#tlTitle').textContent = `Slide ${i + 1}, ${META[i].name}`;
+    mEls(i).forEach(el => {
+      const d = Number(el.dataset.d || 0), dur = Number(el.dataset.dur || 600);
+      end = Math.max(end, d + dur);
+      const row = document.createElement('div');
+      row.className = 'tl-row';
+      const lab = document.createElement('span');
+      lab.className = 'tl-label';
+      lab.textContent = el.dataset.label || 'Elemen';
+      const lane = document.createElement('span');
+      lane.className = 'tl-lane';
+      const bar = document.createElement('i');
+      bar.className = 'tl-bar' + (d + dur > LIMIT_MS ? ' over' : '');
+      bar.style.left = (d / SCALE_MS * 100).toFixed(3) + '%';
+      bar.style.width = (dur / SCALE_MS * 100).toFixed(3) + '%';
+      bar.title = `${fmt(d)} sampai ${fmt(d + dur)} ms`;
+      lane.appendChild(bar);
+      row.append(lab, lane);
+      frag.appendChild(row);
+    });
+    tlRows.replaceChildren(frag);
+    $('#tlCap').textContent = end <= LIMIT_MS
+      ? `Elemen terakhir diam di ${fmt(end)} ms, di bawah batas ${fmt(LIMIT_MS)} ms.`
+      : `Elemen terakhir diam di ${fmt(end)} ms, melewati batas ${fmt(LIMIT_MS)} ms. Kurangi jeda atau durasi.`;
+  }
+  let tlAnim = null;
+  function timelinePlay(animate) {
+    if (tlAnim) { tlAnim.cancel(); tlAnim = null; }
+    const w = tlOver.clientWidth;
+    if (!animate || !w || isStatic()) { tlHead.style.opacity = '0'; return; }
+    tlHead.style.opacity = '1';
+    tlAnim = tlHead.animate([{ transform: 'translateX(0px)' }, { transform: `translateX(${w}px)` }], { duration: SCALE_MS * T(), easing: 'linear', fill: 'forwards' });
+    tlAnim.onfinish = () => { tlHead.style.opacity = '0'; };
+  }
+  $('#tlPlay').addEventListener('click', () => play(state.cur));
+
+  /* ---------- Kurva dan token gerak ---------- */
+  const CURVES = { smooth: { ease: EASE, dur: 520 }, spring: { ease: SPRING, dur: 600 } };
+  function playCurves() {
+    if (reduced()) return;
+    $$('.curve').forEach(fig => {
+      const c = CURVES[fig.dataset.ease], o = { duration: c.dur * T(), fill: 'forwards' };
+      const gx = $('.cx', fig), dot = $('.cdot', fig), ball = $('.cball', fig);
+      [gx, dot, ball].forEach(el => el.getAnimations().forEach(a => a.cancel()));
+      gx.animate([{ transform: 'translateX(0px)' }, { transform: 'translateX(128px)' }], Object.assign({ easing: 'linear' }, o));
+      dot.animate([{ transform: 'translateY(0px)' }, { transform: 'translateY(-80px)' }], Object.assign({ easing: c.ease }, o));
+      ball.animate([{ transform: 'translateX(0px)' }, { transform: 'translateX(128px)' }], Object.assign({ easing: c.ease }, o));
+    });
+  }
+  $('#curvesPlay').addEventListener('click', playCurves);
+  const DEMOS = {
+    press: c => $('i', c).animate([{ scale: '1' }, { scale: '0.96', offset: 0.5 }, { scale: '1' }], { duration: 300 * T(), easing: EASE }),
+    slide: c => {
+      const s = $('.d-strip', c), on = s.classList.toggle('on');
+      s.getAnimations().forEach(a => a.cancel());
+      s.animate([{ transform: `translateX(${on ? '0%' : '-50%'})` }, { transform: `translateX(${on ? '-50%' : '0%'})` }], { duration: 520 * T(), easing: EASE, fill: 'forwards' });
+    },
+    enter: c => $$('i', c).forEach((b, k) => b.animate([{ opacity: 0, transform: 'translateY(12px) scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: 600 * T(), delay: k * 80 * T(), easing: SPRING, fill: 'backwards' })),
+    pop: c => $('i', c).animate([{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 300 * T(), easing: SPRING }),
+    loop: c => $('i', c).animate([
+      { transform: 'rotate(0deg)' }, { transform: 'rotate(0deg)', offset: 0.1 }, { transform: 'rotate(-11deg)', offset: 0.24 },
+      { transform: 'rotate(8deg)', offset: 0.42 }, { transform: 'rotate(-3deg)', offset: 0.6 }, { transform: 'rotate(0deg)', offset: 0.76 }, { transform: 'rotate(0deg)' },
+    ], { duration: 3600 * T(), easing: 'cubic-bezier(0.37, 0, 0.63, 1)' }),
+    reduce: c => $('i', c).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150 * T(), easing: 'linear' }),
+  };
+  $$('.mcard').forEach(c => {
+    const run = () => { if (!reduced()) DEMOS[c.dataset.demo](c); };
+    c.addEventListener('click', run);
+    c.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') run(); });
+  });
+
+  /* ---------- Sorot zona dan komponen ---------- */
+  let pinned = null;
+  function hlZone(z) {
+    if (z) stage.dataset.hl = z; else delete stage.dataset.hl;
+    $$('[data-z]').forEach(el => el.classList.toggle('is-hl', el.dataset.z === z));
+  }
+  $$('[data-z]').forEach(el => {
+    el.addEventListener('pointerenter', () => hlZone(el.dataset.z));
+    el.addEventListener('pointerleave', () => hlZone(pinned));
+    if (el.tagName === 'BUTTON') {
+      el.addEventListener('focus', () => hlZone(el.dataset.z));
+      el.addEventListener('blur', () => hlZone(pinned));
+      el.addEventListener('click', () => {
+        pinned = pinned === el.dataset.z ? null : el.dataset.z;
+        $$('.zbtn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.z === pinned)));
+        hlZone(pinned);
+      });
+    }
+  });
+  let spotTimer = 0;
+  function spot(key) {
+    $$('.spot').forEach(e => e.classList.remove('spot'));
+    if (key) $$(`[data-comp="${key}"]`, slides[state.cur]).forEach(e => e.classList.add('spot'));
+  }
+  $$('.comp').forEach(c => {
+    const key = c.dataset.comp, list = c.dataset.slides.split(',').map(Number);
+    c.addEventListener('pointerenter', () => spot(key));
+    c.addEventListener('pointerleave', () => spot(null));
+    c.addEventListener('focus', () => spot(key));
+    c.addEventListener('blur', () => spot(null));
+    c.addEventListener('click', () => {
+      go(list.includes(state.cur) ? state.cur : list[0]);
+      clearTimeout(spotTimer);
+      spot(key);
+      spotTimer = setTimeout(() => spot(null), 1800);
+    });
+  });
+

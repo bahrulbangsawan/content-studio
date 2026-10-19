@@ -1,0 +1,100 @@
+
+        <article class="g-sec" id="g-warna">
+          <h2>Warna</h2>
+          <p class="lead">Warna akun dikunci di brand.json. Warna sorotan hanya untuk penanda, tidak pernah untuk teks. Rasio kontras dihitung saat build.</p>
+          @@COLORS@@
+        </article>
+
+        <article class="g-sec" id="g-gerak">
+          <h2>Gerak</h2>
+          <p class="lead">Gerak menjelaskan urutan dan perubahan. Semua elemen masuk dan diam dalam 1,2 detik, melambat tanpa memantul. Hanya karakter yang boleh bergerak berulang.</p>
+          <div class="curves">
+            <figure class="curve" data-ease="smooth">
+              <svg viewBox="0 0 172 152" role="img" aria-label="Kurva halus: bergerak cepat di awal lalu mendarat pelan tepat di target, tanpa melewati target.">
+                <line class="c-grid" x1="16" y1="24" x2="144" y2="24"/>
+                <line class="c-ax" x1="16" y1="104" x2="144" y2="104"/>
+                <line class="c-ax" x1="16" y1="16" x2="16" y2="104"/>
+                <text class="c-t" x="20" y="12">progres</text>
+                <text class="c-t" x="144" y="118" text-anchor="end">waktu</text>
+                <path class="c-curve" d="M16 104 C41.6 104 16 24 144 24"/>
+                <g class="cx"><circle class="cdot" cx="16" cy="104" r="5"/></g>
+                <line class="c-track" x1="16" y1="138" x2="144" y2="138"/>
+                <line class="c-tgt" x1="144" y1="130" x2="144" y2="146"/>
+                <circle class="cball" cx="16" cy="138" r="7"/>
+              </svg>
+              <figcaption><b>Halus</b><span>cubic-bezier(0.2, 0, 0, 1)</span><span>Pindah slide, 520 ms</span></figcaption>
+            </figure>
+            <figure class="curve" data-ease="spring">
+              <svg viewBox="0 0 172 152" role="img" aria-label="Kurva masuk: cepat di awal lalu melambat panjang sampai diam, tanpa melewati target.">
+                <line class="c-grid" x1="16" y1="24" x2="144" y2="24"/>
+                <line class="c-ax" x1="16" y1="104" x2="144" y2="104"/>
+                <line class="c-ax" x1="16" y1="16" x2="16" y2="104"/>
+                <text class="c-t" x="20" y="12">progres</text>
+                <text class="c-t" x="144" y="118" text-anchor="end">waktu</text>
+                <path class="c-curve" d="M16 104 C44.16 24 62.08 24 144 24"/>
+                <g class="cx"><circle class="cdot" cx="16" cy="104" r="5"/></g>
+                <line class="c-track" x1="16" y1="138" x2="144" y2="138"/>
+                <line class="c-tgt" x1="144" y1="130" x2="144" y2="146"/>
+                <circle class="cball" cx="16" cy="138" r="7"/>
+              </svg>
+              <figcaption><b>Masuk</b><span>cubic-bezier(0.22, 1, 0.36, 1)</span><span>Elemen masuk, 600 ms, tanpa pantulan</span></figcaption>
+            </figure>
+          </div>
+          <button type="button" class="btn-sm" id="curvesPlay"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Putar kurva</button>
+
+          <h3>Urutan masuk slide ini</h3>
+          <figure class="tl">
+            <div class="tl-top"><b id="tlTitle">Slide 1, Cover</b><button type="button" class="btn-sm" id="tlPlay"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Putar ulang</button></div>
+            <div class="tl-body">
+              <div class="tl-axis" aria-hidden="true"><span class="tl-label">Elemen</span><span class="tl-lane tl-ticks"><i style="left: 0%">0</i><i style="left: 28.571%">400</i><i style="left: 57.143%">800</i><i class="lim" style="left: 85.714%">1.200 ms</i></span></div>
+              <div id="tlRows"></div>
+              <div class="tl-over" id="tlOver" aria-hidden="true"><i class="tl-gl" style="left: 28.571%"></i><i class="tl-gl" style="left: 57.143%"></i><i class="tl-limit"></i><i class="tl-head" id="tlHead"></i></div>
+            </div>
+            <figcaption id="tlCap">Semua elemen diam sebelum batas 1.200 ms.</figcaption>
+          </figure>
+
+          <h3>Token gerak</h3>
+          <div class="mgrid">
+            <button type="button" class="mcard" data-demo="press"><span class="mdemo"><i class="d-pill"></i></span><b>Tekan</b><span>Skala 0,96 dalam 150 ms, untuk tombol di studio.</span></button>
+            <button type="button" class="mcard" data-demo="slide"><span class="mdemo"><span class="d-clip"><span class="d-strip"><i></i><i></i></span></span></span><b>Pindah slide</b><span>520 ms dengan kurva halus, tanpa pantulan.</span></button>
+            <button type="button" class="mcard" data-demo="enter"><span class="mdemo"><i class="d-bar"></i><i class="d-bar"></i><i class="d-bar"></i></span><b>Masuk bertahap</b><span>600 ms kurva masuk, jeda 80 ms antar elemen.</span></button>
+            <button type="button" class="mcard" data-demo="pop"><span class="mdemo"><i class="d-dot"></i></span><b>Pop langkah</b><span>300 ms kurva masuk, saat titik berjalan tiba.</span></button>
+            <button type="button" class="mcard" data-demo="loop"><span class="mdemo"><i class="d-plank"></i></span><b>Karakter</b><span>Putaran 3,6 dtk. Hanya di cover dan penutup.</span></button>
+            <button type="button" class="mcard" data-demo="reduce"><span class="mdemo"><i class="d-sq"></i></span><b>Gerak dikurangi</b><span>Muncul tanpa geser. Kontrol putar disembunyikan.</span></button>
+          </div>
+
+          <h3>Preset gerak</h3>
+          <p class="mp-note">Setiap slide memilih satu preset lewat <code>motion</code> di post.json. Semua preset diam sebelum 1,2 detik dan ikut terekam di MP4. Yang disorot dipakai postingan ini.</p>
+          <div class="mp-grid">
+            @@MOTION_LIST@@
+          </div>
+        </article>
+
+        <article class="g-sec" id="g-komp">
+          <h2>Komponen</h2>
+          <p class="lead">Arahkan kursor untuk menyorot komponen di pratinjau. Ketuk untuk membuka slide tempat komponen itu dipakai.</p>
+          <div class="comp-grid">
+            @@COMP_CARDS@@
+          </div>
+        </article>
+
+        <article class="g-sec" id="g-aturan">
+          <h2>Lakukan dan hindari</h2>
+          <p class="lead">Slide diunggah sebagai gambar atau video. Di Instagram pembaca hanya bisa menggeser carousel, tidak bisa mengetuk isi slide.</p>
+          <div class="dos">
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Semua isi terbaca tanpa disentuh: contoh, jawaban, dan keterangan langsung tertulis.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Ajakan mengetuk, kartu yang perlu dibalik, kotak centang, penghitung, atau bentuk tombol.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Logo kecil di header, di setiap slide.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Logo besar sebagai gambar utama cover.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Satu penanda warna sorotan per slide.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Warna sorotan untuk teks, atau dua penanda sekaligus.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Satu ide per slide, maksimal 50 kata.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Paragraf panjang, tanda seru, atau kata terlarang akun.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Gerak masuk melambat lalu diam dalam 1,2 detik.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Animasi berulang di slide isi, atau gerak yang memantul.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Penekanan dari isi kartu, tebal huruf, dan ukuran. Garis pemisah tipis untuk memisahkan kelompok.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Garis aksen tebal di satu sisi kartu, border tebal berwarna, atau sudut kartu yang terlalu bulat.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Ikon di samping teks tanpa wadah, label sebaris dengan kalimatnya.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Ubin ikon atau pil label di atas judul, nomor untuk butir yang tidak berurutan, hiasan tanpa informasi.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Sampaikan poin secara langsung, dengan alasannya.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Kalimat slogan "X, bukan Y" berulang di banyak slide.</span></p></div>
+            <div class="do-pair"><p class="do"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Disclaimer di footer slide terakhir.</span></p><p class="dont"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span>Disclaimer di dalam grup isi.</span></p></div>
+            @@BRAND_DOS@@
+          </div>
+        </article>
+      </section>
+    </div>
+  </aside>
+</div>

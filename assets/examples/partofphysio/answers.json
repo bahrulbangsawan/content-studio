@@ -1,0 +1,26 @@
+{
+  "id": "partofphysio",
+  "name": "Part of Physio",
+  "handle": "partofphysio",
+  "wordmark": "partofphysio",
+  "language": "id",
+  "logoLight": "logo-light.svg",
+  "logoDark": "logo-dark.svg",
+  "fontFamily": "Inter",
+  "colors": {
+    "light": { "bg": "#F5F0E6", "card": "#FBF8F1", "ink": "#13233A", "muted": "#4A5A6E", "accent": "#3A6BAE" },
+    "dark": { "bg": "#13233A", "card": "#1E3556", "ink": "#F5F0E6", "muted": "#C9D3E0", "accent": "#7FA8DC" },
+    "highlight": "#E9A23B",
+    "onHighlight": "#13233A"
+  },
+  "disclaimer": "Konten ini edukasi umum dan tidak menggantikan pemeriksaan langsung oleh tenaga kesehatan.",
+  "swipeLabel": "Geser",
+  "structure": ["Cover", "Penjelasan", "Perbedaan", "Tanda", "Tindakan", "Penutup"],
+  "rules": {
+    "bannedPhrases": ["sembuh total", "dijamin", "pasti sembuh", "ajaib", "rahasia", "wajib dicoba", "tahukah kamu", "ternyata"]
+  },
+  "dos": [
+    ["Kalimat tenang tanpa tanda seru.", "Kata yang menakut-nakuti atau menjanjikan hasil."],
+    ["Tanda ditulis sebagai catatan, bukan vonis.", "Klaim diagnosis di slide."]
+  ]
+}

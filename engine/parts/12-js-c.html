@@ -1,0 +1,233 @@
+
+  /* ---------- Tab panel ---------- */
+  const tabs = $$('[role="tab"]'), panes = { set: $('#pane-set'), guide: $('#pane-guide') }, panelBody = $('#panelBody');
+  function setTab(name, focus) {
+    state.tab = name;
+    tabs.forEach(t => {
+      const on = t.dataset.tab === name;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      if (on && focus) t.focus();
+    });
+    Object.keys(panes).forEach(k => { panes[k].hidden = k !== name; });
+    $('#tabs').dataset.on = name;
+    panelBody.scrollTop = 0;
+    persist();
+    if (name === 'guide') requestAnimationFrame(() => { drawFlow(); renderTimeline(); });
+  }
+  tabs.forEach(t => {
+    t.addEventListener('click', () => setTab(t.dataset.tab));
+    t.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setTab(state.tab === 'set' ? 'guide' : 'set', true); }
+    });
+  });
+  /* ---------- Daftar isi panduan (dropdown) ---------- */
+  const toc = $('#toc'), tocBtn = $('#tocBtn'), tocMenu = $('#tocMenu'), tocPrev = $('#tocPrev'), tocNext = $('#tocNext');
+  const tocLinks = $$('a', tocMenu), gSecs = $$('.g-sec');
+  let tocIdx = 0, tocLock = 0;
+  function setToc(i) {
+    if (i < 0) return;
+    tocIdx = i;
+    $('#tocN').textContent = `${i + 1}/${gSecs.length}`;
+    $('#tocCur').textContent = $('h2', gSecs[i]).textContent;
+    tocLinks.forEach((a, k) => {
+      a.classList.toggle('is-on', k === i);
+      if (k === i) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+    });
+    tocPrev.disabled = i === 0;
+    tocNext.disabled = i === gSecs.length - 1;
+  }
+  function setTocOpen(open) {
+    if (open === !tocMenu.hidden) return;
+    tocBtn.setAttribute('aria-expanded', String(open));
+    if (!open) { tocMenu.hidden = true; return; }
+    tocMenu.classList.add('is-opening');
+    tocMenu.hidden = false;
+    void tocMenu.offsetWidth;
+    tocMenu.classList.remove('is-opening');
+  }
+  function goSection(i) {
+    if (i < 0 || i >= gSecs.length) return;
+    setToc(i);
+    /* Abaikan pengamat selama gulir halus, supaya label tidak berkedip melewati bagian di tengah */
+    tocLock = performance.now() + 900;
+    gSecs[i].scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+  }
+  tocBtn.addEventListener('click', () => {
+    setTocOpen(tocMenu.hidden);
+    if (!tocMenu.hidden) tocLinks[tocIdx].focus();
+  });
+  tocBtn.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' && tocMenu.hidden) { e.preventDefault(); setTocOpen(true); tocLinks[tocIdx].focus(); }
+  });
+  tocPrev.addEventListener('click', () => goSection(tocIdx - 1));
+  tocNext.addEventListener('click', () => goSection(tocIdx + 1));
+  tocLinks.forEach((a, k) => a.addEventListener('click', e => {
+    e.preventDefault();
+    setTocOpen(false);
+    tocBtn.focus({ preventScroll: true });
+    goSection(k);
+  }));
+  tocMenu.addEventListener('keydown', e => {
+    const k = tocLinks.indexOf(document.activeElement);
+    const to = { ArrowDown: k + 1, ArrowUp: k - 1, Home: 0, End: tocLinks.length - 1 }[e.key];
+    if (to !== undefined) { e.preventDefault(); tocLinks[Math.max(0, Math.min(tocLinks.length - 1, to))].focus(); }
+  });
+  toc.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !tocMenu.hidden) { e.preventDefault(); setTocOpen(false); tocBtn.focus(); }
+  });
+  toc.addEventListener('focusout', e => { if (!toc.contains(e.relatedTarget)) setTocOpen(false); });
+  document.addEventListener('pointerdown', e => { if (!tocMenu.hidden && !toc.contains(e.target)) setTocOpen(false); });
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      if (performance.now() > tocLock) setToc(gSecs.indexOf(en.target));
+      if (en.target.id === 'g-gerak' && !playCurves.done) { playCurves.done = true; playCurves(); }
+    });
+  }, { rootMargin: '-25% 0px -65% 0px' });
+  gSecs.forEach(s => spy.observe(s));
+  setToc(0);
+
+  /* ---------- Pengaturan ---------- */
+  function setRadio(name, val) { $$(`input[name="${name}"]`).forEach(r => { r.checked = r.value === String(val); }); }
+  function onRadio(name, fn) { $$(`input[name="${name}"]`).forEach(r => r.addEventListener('change', () => { if (r.checked) fn(r.value); })); }
+  onRadio('motion', v => { state.motion = v; applyMode(); persist(); if (!isStatic()) play(state.cur); });
+  onRadio('speed', v => { state.speed = Number(v); root.style.setProperty('--t', v); persist(); if (!isStatic()) play(state.cur); if (state.auto) scheduleAuto(); });
+  onRadio('interval', v => { state.interval = Number(v); persist(); if (state.auto) scheduleAuto(); });
+  const SWITCHES = { 'sw-zones': ['zones', 'show-zones'], 'sw-center': ['center', 'show-center'], 'sw-dims': ['dims', 'show-dims'] };
+  Object.keys(SWITCHES).forEach(id => {
+    const [key, cls] = SWITCHES[id], el = $('#' + id);
+    el.checked = state[key];
+    stage.classList.toggle(cls, state[key]);
+    el.addEventListener('change', () => { state[key] = el.checked; stage.classList.toggle(cls, el.checked); persist(); });
+  });
+
+  /* ---------- Kontras warna dihitung dari nilai token ---------- */
+  function lum(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  $$('[data-contrast]').forEach(el => {
+    const [a, b] = el.dataset.contrast.split(','), x = lum(a), y = lum(b);
+    el.textContent = ((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(1).replace('.', ',') + ':1';
+  });
+
+  /* ---------- Ukuran ---------- */
+  function fit() {
+    W = stage.clientWidth;
+    stage.style.setProperty('--k', (W / 1080).toFixed(5));
+    track.classList.add('no-anim');
+    place(0);
+    void track.offsetWidth;
+    track.classList.remove('no-anim');
+  }
+  new ResizeObserver(fit).observe(stage);
+  new ResizeObserver(() => drawFlow()).observe(flowWrap);
+
+  /* ---------- Pintasan: D membuka menu Unduh (tidak aktif saat mengetik) ---------- */
+  document.addEventListener('keydown', e => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if ((e.key === 'd' || e.key === 'D') && !dlWrap.hidden && !exporting) {
+      e.preventDefault();
+      setPop(dlPop.hidden);
+      if (!dlPop.hidden) { const first = $('.dl-item:not(:disabled)', dlPop); if (first) first.focus(); }
+    }
+  });
+
+  /* ---------- Pilihan cover dan penutup ----------
+     Alternatif untuk slide pertama (covers di post.json) dan slide terakhir (closings), disimpan sebagai
+     template. Yang dipilih menggantikan isi slidenya, jadi pratinjau, pemeriksaan, dan semua unduhan memakainya.
+     Tombol pilihan di dok muncul saat slide itu yang sedang tampil. */
+  const cvPick = $('#cvPick'), cvN = $('#cvN');
+  const ALTS = [
+    { key: 'cover', at: 0, word: 'Cover', meta: DATA.covers || [], tpl: 'template.alt-cover', list: '#cvList', block: '#cvBlock' },
+    { key: 'close', at: N - 1, word: 'Penutup', meta: DATA.closings || [], tpl: 'template.alt-close', list: '#czList', block: '#czBlock' },
+  ].map(a => ({ ...a, k: 0, src: a.meta.length ? [slides[a.at].cloneNode(true), ...$$(a.tpl, track).map(t => t.content.querySelector('.slide'))] : [] }));
+  function setAlt(a, k, quiet) {
+    if (exporting || a.src.length < 2) return;
+    k = (k + a.src.length) % a.src.length;
+    const i = a.at, s = slides[i], src = a.src[k];
+    a.k = state[a.key] = k;
+    s.replaceChildren(...src.cloneNode(true).childNodes);
+    s.className = src.className.replace(/\bis-active\b/, '').trim() + (state.cur === i ? ' is-active' : '');
+    s.setAttribute('aria-label', src.getAttribute('aria-label'));
+    $$('[data-m]', s).forEach(el => { if (el.dataset.dur) el.style.setProperty('--dur', el.dataset.dur + 'ms'); });
+    Object.assign(META[i], a.meta[k]);
+    CLIP[i] = META[i].clipMs;
+    SLUG[i] = META[i].slug;
+    attachMedia(s);
+    if (isStatic()) setIn(i, true); else if (state.cur === i) play(i); else snapOut(i);
+    mediaSync();
+    $$(`input[name="alt-${a.key}"]`).forEach(r => { r.checked = Number(r.value) === k; });
+    runChecks();
+    syncUI();
+    persist();
+    if (!quiet) live.textContent = `${a.word} ${k + 1} dari ${a.src.length}: ${a.meta[k].hook}`;
+  }
+  /* Dok: pilihan untuk slide yang sedang tampil, bila slide itu punya alternatif */
+  function syncAltDock() {
+    const a = ALTS.find(x => x.at === state.cur && x.src.length > 1);
+    cvPick.hidden = !a;
+    if (!a) return;
+    cvN.textContent = `${a.word} ${a.k + 1}/${a.src.length}`;
+    cvPick.title = a.meta[a.k].hook;
+    $('#cvPrev').setAttribute('aria-label', `${a.word} sebelumnya`);
+    $('#cvNext').setAttribute('aria-label', `${a.word} berikutnya`);
+  }
+  ALTS.forEach(a => {
+    if (a.src.length < 2) return;
+    $(a.block).hidden = false;
+    a.meta.forEach((c, k) => {
+      const lab = document.createElement('label');
+      lab.className = 'cv-opt';
+      const r = Object.assign(document.createElement('input'), { type: 'radio', name: `alt-${a.key}`, value: String(k) });
+      r.addEventListener('change', () => { if (r.checked) { setAlt(a, k); go(a.at); } });
+      /* Pratinjau kecil: salinan slide yang diam di posisi akhirnya, tidak bisa difokus */
+      const mini = document.createElement('span');
+      mini.className = 'cv-mini';
+      mini.setAttribute('aria-hidden', 'true');
+      const sl = a.src[k].cloneNode(true);
+      sl.classList.remove('is-active');
+      ['role', 'aria-roledescription', 'aria-label'].forEach(x => sl.removeAttribute(x));
+      sl.inert = true;
+      $$('[data-m]', sl).forEach(e => e.classList.add('is-in'));
+      mini.appendChild(sl);
+      mediaReady.then(() => attachMedia(mini));
+      const t = document.createElement('span');
+      t.className = 'cv-t';
+      t.append(Object.assign(document.createElement('b'), { textContent: `${a.word} ${k + 1}` }), Object.assign(document.createElement('small'), { textContent: c.hook }));
+      lab.append(r, mini, t);
+      $(a.list).appendChild(lab);
+    });
+  });
+  const altHere = () => ALTS.find(x => x.at === state.cur && x.src.length > 1);
+  $('#cvPrev').addEventListener('click', () => { const a = altHere(); if (a) setAlt(a, a.k - 1); });
+  $('#cvNext').addEventListener('click', () => { const a = altHere(); if (a) setAlt(a, a.k + 1); });
+  /* Kait untuk verify.mjs: periksa dan foto setiap alternatif */
+  window.__studio.coverCount = Math.max(1, ALTS[0].src.length);
+  window.__studio.setCover = k => { setAlt(ALTS[0], k, true); return ALTS[0].meta[k] ? ALTS[0].meta[k].hook : ''; };
+  window.__studio.closeCount = Math.max(1, ALTS[1].src.length);
+  window.__studio.setClose = k => { setAlt(ALTS[1], k, true); return ALTS[1].meta[k] ? ALTS[1].meta[k].hook : ''; };
+
+  /* ---------- Mulai ---------- */
+  $$('[data-m]').forEach(el => { if (el.dataset.dur) el.style.setProperty('--dur', el.dataset.dur + 'ms'); });
+  measureSteps();
+  buildChecks();
+  setRadio('motion', state.motion);
+  setRadio('speed', state.speed);
+  setRadio('interval', state.interval);
+  applyFocus();
+  slides.forEach((s, k) => { s.classList.toggle('is-active', k === 0); s.inert = k !== 0; });
+  applyMode();
+  fit();
+  setTab(state.tab);
+  syncUI();
+  runChecks();
+  ALTS.forEach(a => { if (a.src.length > 1) setAlt(a, Math.min(state[a.key], a.src.length - 1), true); });
+  syncAltDock();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { runChecks(); drawFlow(); });
+  mqReduce.addEventListener('change', () => { applyMode(); if (!isStatic()) play(state.cur); });
+})();
+</script>

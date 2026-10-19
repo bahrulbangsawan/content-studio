@@ -1,0 +1,2 @@
+# Versi gallery-dl untuk scripts/ref.mjs. Dipasang otomatis ke tools/.venv; diperbarui oleh `ref.mjs --update`.
+gallery-dl==1.32.17

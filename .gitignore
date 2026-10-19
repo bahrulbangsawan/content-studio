@@ -1,0 +1,4 @@
+# gallery-dl dipasang otomatis oleh scripts/ref.mjs saat pertama dipakai
+tools/.venv/
+.DS_Store
+node_modules/

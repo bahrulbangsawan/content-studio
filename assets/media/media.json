@@ -1,0 +1,45 @@
+{
+ "note": "Contoh foto dan video (ilustrasi pengganti foto) untuk katalog komponen dan gerbang komponen. Bukan untuk postingan: postingan memakai foto akun sendiri di posts/<slug>/media/.",
+ "files": [
+  {
+   "src": "contoh-seimbang.jpg",
+   "kind": "image",
+   "alt": "Anak berjalan di atas balok kayu di taman dengan tangan terbuka"
+  },
+  {
+   "src": "contoh-satu-kaki.jpg",
+   "kind": "image",
+   "alt": "Anak berdiri satu kaki di atas matras dengan tangan di atas kepala"
+  },
+  {
+   "src": "contoh-duduk-bungkuk.jpg",
+   "kind": "image",
+   "alt": "Anak duduk membungkuk saat menulis, kaki menggantung"
+  },
+  {
+   "src": "contoh-duduk-tegak.jpg",
+   "kind": "image",
+   "alt": "Anak duduk tegak saat menulis, kaki menapak di pijakan"
+  },
+  {
+   "src": "contoh-duduk-bungkuk-lebar.jpg",
+   "kind": "image",
+   "alt": "Anak duduk membungkuk saat menulis, foto mendatar"
+  },
+  {
+   "src": "contoh-duduk-tegak-lebar.jpg",
+   "kind": "image",
+   "alt": "Anak duduk tegak saat menulis, foto mendatar"
+  },
+  {
+   "src": "contoh-terapis.jpg",
+   "kind": "image",
+   "alt": "Fisioterapis tersenyum memakai seragam klinik"
+  },
+  {
+   "src": "contoh-latihan.mp4",
+   "kind": "video",
+   "alt": "Anak menjaga keseimbangan di atas balok kayu"
+  }
+ ]
+}

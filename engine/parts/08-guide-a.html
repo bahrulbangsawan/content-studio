@@ -1,0 +1,105 @@
+
+      <section class="pane" id="pane-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+        <div class="toc" id="toc">
+          <button type="button" class="toc-btn" id="tocBtn" aria-expanded="false" aria-controls="tocMenu">
+            <span class="sr">Daftar isi. Bagian aktif: </span>
+            <span class="toc-n" id="tocN">1/7</span>
+            <span class="toc-cur" id="tocCur">Anatomi slide</span>
+            <svg class="ic toc-chev" aria-hidden="true"><use href="#i-chev-down"/></svg>
+          </button>
+          <div class="toc-step">
+            <button type="button" class="ibtn" id="tocPrev" aria-label="Bagian sebelumnya"><svg class="ic" aria-hidden="true"><use href="#i-chev-up"/></svg></button>
+            <button type="button" class="ibtn" id="tocNext" aria-label="Bagian berikutnya"><svg class="ic" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
+          </div>
+          <nav class="toc-menu" id="tocMenu" aria-label="Daftar isi panduan" hidden>
+            <a href="#g-anatomi"><span class="toc-i">1</span><span class="toc-t"><b>Anatomi slide</b><small>Zona, margin, dan garis tengah</small></span></a>
+            <a href="#g-alur"><span class="toc-i">2</span><span class="toc-t"><b>Alur slide</b><small>Urutan dan tujuan tiap slide</small></span></a>
+            <a href="#g-tipo"><span class="toc-i">3</span><span class="toc-t"><b>Tipografi</b><small>Ukuran, bobot, dan batas 30 px</small></span></a>
+            <a href="#g-warna"><span class="toc-i">4</span><span class="toc-t"><b>Warna</b><small>Rasio pemakaian dan kontras</small></span></a>
+            <a href="#g-gerak"><span class="toc-i">5</span><span class="toc-t"><b>Gerak</b><small>Kurva, urutan masuk, dan token</small></span></a>
+            <a href="#g-komp"><span class="toc-i">6</span><span class="toc-t"><b>Komponen</b><small>Komponen yang dipakai postingan ini</small></span></a>
+            <a href="#g-aturan"><span class="toc-i">7</span><span class="toc-t"><b>Lakukan dan hindari</b><small>Termasuk aturan tanpa interaksi</small></span></a>
+          </nav>
+        </div>
+
+        <article class="g-sec" id="g-anatomi">
+          <h2>Anatomi slide</h2>
+          <p class="lead">Kanvas 1080 x 1350 px, rasio 4:5. Tiga zona tetap dan margin samping 96 px. Arahkan kursor ke zona untuk melihatnya di pratinjau.</p>
+          <figure class="anat">
+            <svg viewBox="0 0 330 322" role="img" aria-label="Kanvas dibagi menjadi header setinggi 168, konten setinggi 1014, dan footer setinggi 168, dengan margin samping 96. Grup isi berada di tengah konten dengan jarak atas dan bawah yang sama.">
+              <defs>
+                <marker id="an-ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="currentColor" stroke-width="1.2"/></marker>
+              </defs>
+              <rect x="24" y="12" width="216" height="270" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+              <rect class="zr" data-z="header" x="24" y="12" width="216" height="33.6"/>
+              <rect class="zr" data-z="footer" x="24" y="248.4" width="216" height="33.6"/>
+              <rect class="zr" data-z="margin" x="24" y="45.6" width="19.2" height="202.8"/>
+              <rect class="zr" data-z="margin" x="220.8" y="45.6" width="19.2" height="202.8"/>
+              <rect class="zr" data-z="content" x="43.2" y="45.6" width="177.6" height="202.8"/>
+              <rect class="a-grp" x="63.2" y="95.6" width="137.6" height="102.8" rx="6"/>
+              <line class="a-dash" x1="43.2" y1="147" x2="220.8" y2="147"/>
+              <line class="a-line" x1="132" y1="48" x2="132" y2="93" marker-start="url(#an-ar)" marker-end="url(#an-ar)"/>
+              <line class="a-line" x1="132" y1="201" x2="132" y2="246" marker-start="url(#an-ar)" marker-end="url(#an-ar)"/>
+              <text x="138" y="74">a</text>
+              <text x="138" y="228">a</text>
+              <text x="132" y="32" text-anchor="middle">Header</text>
+              <text x="132" y="125" text-anchor="middle">Grup isi</text>
+              <text x="132" y="269" text-anchor="middle">Footer</text>
+              <path class="a-line" d="M242 12 H248 M242 45.6 H248 M242 147 H248 M242 248.4 H248 M242 282 H248"/>
+              <text class="t-mut" x="252" y="16">0</text>
+              <text class="t-mut" x="252" y="49.6">168</text>
+              <text class="t-mut" x="252" y="151">675 tengah</text>
+              <text class="t-mut" x="252" y="252.4">1182</text>
+              <text class="t-mut" x="252" y="286">1350</text>
+              <path class="a-line" d="M24 296 H240 M24 292 V300 M43.2 292 V300 M220.8 292 V300 M240 292 V300"/>
+              <text class="t-mut" x="33.6" y="312" text-anchor="middle">96</text>
+              <text class="t-mut" x="132" y="312" text-anchor="middle">888</text>
+              <text class="t-mut" x="230.4" y="312" text-anchor="middle">96</text>
+            </svg>
+            <figcaption>Jarak atas dan bawah grup isi harus sama (a = a), dengan toleransi 24 px.</figcaption>
+          </figure>
+          <div class="zlist">
+            <button type="button" class="zbtn" data-z="header" aria-pressed="false"><b>Header</b><span class="dim">y 0 sampai 168</span><span class="rl">Logo dan penghitung slide. Logo wajib di setiap slide.</span></button>
+            <button type="button" class="zbtn" data-z="content" aria-pressed="false"><b>Konten</b><span class="dim">888 x 1014</span><span class="rl">Semua judul, teks, dan visual. Grup dipusatkan di sini.</span></button>
+            <button type="button" class="zbtn" data-z="footer" aria-pressed="false"><b>Footer</b><span class="dim">y 1182 sampai 1350</span><span class="rl">Handle, petunjuk geser, dan disclaimer saja.</span></button>
+            <button type="button" class="zbtn" data-z="margin" aria-pressed="false"><b>Margin samping</b><span class="dim">96 px</span><span class="rl">Tidak ada teks atau tepi kartu yang masuk ke sini.</span></button>
+            <button type="button" class="zbtn" data-z="center" aria-pressed="false"><b>Garis tengah</b><span class="dim">y 675</span><span class="rl">Pusat grup isi jatuh di garis ini.</span></button>
+          </div>
+        </article>
+
+        <article class="g-sec" id="g-alur">
+          <h2>Alur slide</h2>
+          <p class="lead">Urutan slide di postingan ini. Garis gelap menunjukkan sejauh mana pratinjau sudah berjalan. Ketuk satu slide untuk membukanya.</p>
+          <div class="flow-wrap" id="flowWrap">
+            <svg class="flow-lines" id="flowLines" aria-hidden="true">
+              <defs>
+                <marker id="fa-m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M2 1 L8 5 L2 9"/></marker>
+                <marker id="fa-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M2 1 L8 5 L2 9"/></marker>
+              </defs>
+              @@FLOW_PATHS@@
+            </svg>
+            <div class="flow" id="flow">
+              @@FLOW_NODES@@
+            </div>
+          </div>
+          <div class="fdetail" aria-live="polite">
+            <b id="fdName"></b>
+            <p id="fdGoal"></p>
+            <dl>
+              <dt>Visual</dt><dd id="fdVisual"></dd>
+              <dt>Judul</dt><dd id="fdTitle"></dd>
+              <dt>Latar</dt><dd id="fdTheme"></dd>
+            </dl>
+          </div>
+        </article>
+
+        <article class="g-sec" id="g-tipo">
+          <h2>Tipografi</h2>
+          <p class="lead">Satu keluarga, Inter, dengan tiga bobot: 400, 550, dan 700. Hierarki dari ukuran dan bobot, tanpa letter-spacing dan tanpa huruf kapital.</p>
+          <figure>
+            <div class="ladder">
+              @@TYPE_LADDER@@
+            </div>
+            <figcaption>Contoh tampil di skala 50 persen. Ukuran di kanan adalah ukuran di kanvas. Tidak ada teks di bawah garis merah.</figcaption>
+          </figure>
+        </article>

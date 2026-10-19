@@ -1,0 +1,75 @@
+
+  <aside class="panel" id="panel" aria-label="Pengaturan dan panduan">
+    <div class="panel-head">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Isi panel" data-on="set">
+        <span class="tab-ind" aria-hidden="true"></span>
+        <button type="button" class="tab" role="tab" id="tab-set" data-tab="set" aria-controls="pane-set" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-adjust"/></svg>Pengaturan</button>
+        <button type="button" class="tab" role="tab" id="tab-guide" data-tab="guide" aria-controls="pane-guide" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg>Panduan</button>
+      </div>
+    </div>
+    <div class="panel-body" id="panelBody">
+
+      <section class="pane" id="pane-set" role="tabpanel" aria-labelledby="tab-set">
+        <div class="block" id="cvBlock" hidden>
+          <h2 class="h-sub" id="lbl-cover">Pilihan cover</h2>
+          <p class="help">Beberapa hook untuk slide pertama. Yang dipilih tampil di slide 1, ikut diperiksa, dan dipakai semua unduhan.</p>
+          <div class="cv-list" id="cvList" role="radiogroup" aria-labelledby="lbl-cover"></div>
+        </div>
+
+        <div class="block" id="czBlock" hidden>
+          <h2 class="h-sub" id="lbl-close">Pilihan penutup</h2>
+          <p class="help">Beberapa ajakan untuk slide terakhir. Yang dipilih tampil di slide terakhir, ikut diperiksa, dan dipakai semua unduhan.</p>
+          <div class="cv-list" id="czList" role="radiogroup" aria-labelledby="lbl-close"></div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h2 class="h-sub">Pemeriksaan</h2>
+            <span class="status ok" id="checkPill"><svg class="ic" aria-hidden="true"><use href="#i-circle-check"/></svg><span id="checkSum">Memeriksa</span></span>
+          </div>
+          <p class="help">Dihitung langsung dari isi slide. Ketuk nomor untuk membuka slidenya.</p>
+          <div class="table-scroll"><table class="checks" id="checks"></table></div>
+          <p class="check-detail" id="checkDetail"></p>
+        </div>
+
+        <div class="block">
+          <h2 class="h-sub">Pratinjau</h2>
+          <div class="field">
+            <span class="label" id="lbl-motion">Gerak</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lbl-motion">
+              <label><input type="radio" name="motion" id="motion-on" value="on" checked><span>Hidup</span></label>
+              <label><input type="radio" name="motion" id="motion-off" value="off"><span>Statis</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label" id="lbl-speed">Kecepatan</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lbl-speed" aria-describedby="speed-help">
+              <label><input type="radio" name="speed" id="speed-1" value="1" checked><span>1x</span></label>
+              <label><input type="radio" name="speed" id="speed-2" value="2"><span>0,5x</span></label>
+              <label><input type="radio" name="speed" id="speed-10" value="10"><span>0,1x</span></label>
+            </div>
+            <p class="help" id="speed-help">Pakai 0,1x untuk memeriksa easing dan urutan masuk.</p>
+          </div>
+          <div class="field">
+            <span class="label" id="lbl-int">Jeda putar otomatis</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lbl-int">
+              <label><input type="radio" name="interval" id="int-3" value="3"><span>3 dtk</span></label>
+              <label><input type="radio" name="interval" id="int-5" value="5" checked><span>5 dtk</span></label>
+              <label><input type="radio" name="interval" id="int-8" value="8"><span>8 dtk</span></label>
+            </div>
+          </div>
+          <p class="note" id="rmNote" hidden>Perangkatmu meminta gerak dikurangi, jadi pratinjau tampil statis dan kontrol putar disembunyikan.</p>
+        </div>
+
+        <div class="block">
+          <h2 class="h-sub">Garis bantu</h2>
+          <label class="switch-row" for="sw-zones"><span><b>Zona aman</b><small>Header, konten, footer, dan margin samping</small></span><input type="checkbox" class="switch" role="switch" id="sw-zones"></label>
+          <label class="switch-row" for="sw-center"><span><b>Garis tengah</b><small>Pusat zona konten, untuk cek keseimbangan</small></span><input type="checkbox" class="switch" role="switch" id="sw-center"></label>
+          <label class="switch-row" for="sw-dims"><span><b>Label ukuran</b><small>Angka piksel di setiap zona</small></span><input type="checkbox" class="switch" role="switch" id="sw-dims"></label>
+        </div>
+
+        <div class="block">
+          <h2 class="h-sub">Sumber</h2>
+          <p class="help">Halaman ini dibangun dari <b>@@POST_FILE@@</b> untuk akun <b>@@BRAND_NAME@@</b>. Ubah isi di file itu, lalu bangun ulang. Halaman ini tidak menyimpan perubahan.</p>
+        </div>
+      </section>

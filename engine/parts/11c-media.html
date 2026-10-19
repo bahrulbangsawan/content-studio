@@ -1,0 +1,99 @@
+
+  /* ---------- Foto dan video ----------
+     Setiap berkas tersimpan sekali di halaman (script.md-src, base64) dan dipasang sebagai blob: URL ke semua
+     elemen [data-media], termasuk salinan di daftar pilihan cover dan penutup. Video hanya berputar di slide
+     yang sedang tampil saat gerak hidup; di slide lain dan di mode statis ia diam di detik "still". */
+  const MEDIA = new Map();
+  const VIDEO_MIN = 3000, VIDEO_MAX = 15000;
+  const stillOf = v => Math.max(0, Math.min(Number(v.dataset.still) || 0, (v.duration || 1) - 0.05));
+  function attachMedia(scope) {
+    $$('[data-media]', scope).forEach(el => {
+      const u = MEDIA.get(el.dataset.media);
+      if (!u || el.getAttribute('src') === u) return;
+      if (el.tagName === 'VIDEO') {
+        el.muted = true;
+        el.addEventListener('loadedmetadata', () => { videoClip(el); if (el.paused) el.currentTime = stillOf(el); }, { once: true });
+      }
+      el.src = u;
+    });
+  }
+  /* Klip video satu slide mengikuti panjang videonya, 3 sampai 15 detik */
+  function videoClip(v) {
+    const i = slides.indexOf(v.closest('.slide'));
+    if (i < 0 || !v.duration) return;
+    CLIP[i] = META[i].clipMs = Math.round(Math.max(VIDEO_MIN, Math.min(VIDEO_MAX, v.duration * 1000)));
+    META[i].loops = true;
+  }
+  function mediaSync(restart) {
+    slides.forEach((s, k) => $$('video.md-el', s).forEach(v => {
+      if (!v.getAttribute('src')) return;
+      const on = k === state.cur && !isStatic() && !exporting;
+      if (on) {
+        if (restart || v.paused) { try { v.currentTime = 0; } catch (e) { /* belum siap */ } v.play().catch(() => {}); }
+      } else {
+        v.pause();
+        if (v.readyState >= 1 && Math.abs(v.currentTime - stillOf(v)) > 0.04) v.currentTime = stillOf(v);
+      }
+    }));
+  }
+  const mediaReady = Promise.all($$('script.md-src').map(s =>
+    fetch(`data:${s.dataset.mime};base64,${s.textContent.trim()}`).then(r => r.blob()).then(b => { MEDIA.set(s.dataset.id, URL.createObjectURL(b)); }).catch(e => console.warn('[media] berkas gagal dimuat', s.dataset.name, e))
+  )).then(() => {
+    attachMedia(document);
+    return Promise.all($$('[data-media]').map(el => new Promise(r => {
+      if (el.tagName === 'VIDEO' ? el.readyState >= 2 : el.complete) return r();
+      const t = setTimeout(r, 4000);
+      el.addEventListener(el.tagName === 'VIDEO' ? 'loadeddata' : 'load', () => { clearTimeout(t); r(); }, { once: true });
+      el.addEventListener('error', () => { clearTimeout(t); r(); }, { once: true });
+    })));
+  }).then(() => { mediaSync(); if (!dlPop.hidden) syncDl(); });
+
+  /* Ekspor: SVG foreignObject hanya memuat gambar dari data: URL, jadi foto dan frame video saat t
+     digambar dulu ke JPEG data: URL, lalu menggantikan elemennya di salinan slide */
+  const SNAP = new Map();
+  function snapOf(el) {
+    const w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight;
+    if (!w || !h) return '';
+    const k = Math.min(1, 1600 / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.round(w * k);
+    c.height = Math.round(h * k);
+    try { c.getContext('2d').drawImage(el, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.9); }
+    catch (e) { console.warn('[media] frame gagal digambar', e); return ''; }
+  }
+  const once = (el, ev, ms) => new Promise(r => { const t = setTimeout(r, ms); el.addEventListener(ev, () => { clearTimeout(t); r(); }, { once: true }); });
+  async function seekTo(v, sec) {
+    if (v.readyState < 1) await once(v, 'loadedmetadata', 3000);
+    if (!v.duration) return;
+    const target = Math.max(0, Math.min(sec, v.duration - 0.04));
+    if (Math.abs(v.currentTime - target) < 0.004 && v.readyState >= 2) return;
+    const p = once(v, 'seeked', 2000);
+    v.currentTime = target;
+    await p;
+  }
+  async function prepMedia(i, t, still) {
+    for (const el of $$('.md-el', slides[i])) {
+      if (el.tagName === 'VIDEO') {
+        el.pause();
+        await seekTo(el, still ? stillOf(el) : (t / 1000) % (el.duration || 1));
+        SNAP.set(el, { src: el.src, url: snapOf(el) });
+      } else if (!SNAP.has(el) || SNAP.get(el).src !== el.src) {
+        if (!el.complete) await once(el, 'load', 4000);
+        SNAP.set(el, { src: el.src, url: snapOf(el) });
+      }
+    }
+  }
+  /* Di salinan slide: video dan foto diganti gambar diam dengan kelas dan gaya yang sama */
+  function swapMedia(pairs) {
+    pairs.forEach(([a, b]) => {
+      const s = SNAP.get(a);
+      if (!s || !s.url) return;
+      const img = document.createElement('img');
+      img.className = b.getAttribute('class') || '';
+      img.setAttribute('style', b.getAttribute('style') || '');
+      img.setAttribute('alt', '');
+      img.src = s.url;
+      b.replaceWith(img);
+    });
+  }
+  window.__studio.mediaReady = false;
+  mediaReady.then(() => { window.__studio.mediaReady = true; });

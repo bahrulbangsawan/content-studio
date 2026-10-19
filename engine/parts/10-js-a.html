@@ -1,0 +1,280 @@
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  /* Data postingan dan akun disisipkan oleh build.mjs. Halaman ini tidak pernah mengubahnya. */
+  const DATA = JSON.parse($('#studioData').textContent);
+  const RULES = DATA.rules;
+  const KEY = 'content-studio:' + DATA.brand.id + ':' + DATA.post.slug;
+  const LIMIT_MS = 1200, SCALE_MS = 1400;
+  const EASE = 'cubic-bezier(0.2, 0, 0, 1)', SPRING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  const META = DATA.meta;
+  const fmt = n => Math.round(n).toLocaleString('id-ID');
+  const words = s => s.trim().split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+
+  /* ---------- Simpanan per penonton ---------- */
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  const state = {
+    cur: 0,
+    motion: saved.motion === 'off' ? 'off' : 'on',
+    speed: [1, 2, 10].includes(saved.speed) ? saved.speed : 1,
+    interval: [3, 5, 8].includes(saved.interval) ? saved.interval : 5,
+    auto: false,
+    zones: !!saved.zones, center: !!saved.center, dims: !!saved.dims,
+    tab: saved.tab === 'guide' ? 'guide' : 'set',
+    focus: !!saved.focus,
+    cover: Number.isInteger(saved.cover) ? saved.cover : 0,
+    close: Number.isInteger(saved.close) ? saved.close : 0,
+  };
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ motion: state.motion, speed: state.speed, interval: state.interval, zones: state.zones, center: state.center, dims: state.dims, tab: state.tab, focus: state.focus, cover: state.cover, close: state.close }));
+    } catch (e) { /* penyimpanan tidak tersedia */ }
+  }
+
+  const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = () => mqReduce.matches;
+  const isStatic = () => reduced() || state.motion === 'off';
+  const T = () => state.speed;
+
+  function bezier(x1, y1, x2, y2) {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+    const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    const sx = t => ((ax * t + bx) * t + cx) * t;
+    const sy = t => ((ay * t + by) * t + cy) * t;
+    const dx = t => (3 * ax * t + 2 * bx) * t + cx;
+    return x => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 8; i++) {
+        const e = sx(t) - x;
+        if (Math.abs(e) < 1e-5) break;
+        const d = dx(t);
+        if (Math.abs(d) < 1e-6) break;
+        t -= e / d;
+      }
+      return sy(Math.min(1, Math.max(0, t)));
+    };
+  }
+  const easeSmooth = bezier(0.2, 0, 0, 1);
+
+  function icon(id, cls) {
+    const s = document.createElementNS(SVGNS, 'svg');
+    s.setAttribute('class', cls || 'ic');
+    s.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS(SVGNS, 'use');
+    u.setAttribute('href', '#' + id);
+    s.appendChild(u);
+    return s;
+  }
+
+  /* ---------- Elemen ---------- */
+  const root = document.documentElement;
+  const studio = $('#studio'), stage = $('#stage'), track = $('#track'), stageBox = $('#stageBox');
+  const slides = $$('.slide', track), N = slides.length;
+  const btnPrev = $('#btnPrev'), btnNext = $('#btnNext'), btnPlay = $('#btnPlay'), btnReplay = $('#btnReplay'), btnFocus = $('#btnFocus');
+  const dotsEl = $('#dots'), nowN = $('#nowN'), nowName = $('#nowName'), live = $('#live');
+  const mEls = i => $$('[data-m]', slides[i]);
+
+  /* ---------- Komponen jalur langkah (boleh muncul di slide mana pun) ---------- */
+  const ST_START = 150, ST_RUN = 750;
+  const STEPS = new Map();
+  slides.forEach((s, i) => {
+    const svg = $('.steps-svg', s);
+    if (!svg) return;
+    STEPS.set(i, { svg, base: $('.st-base', svg), prog: $('.st-prog', svg), dot: $('.st-dot', svg), chips: $$('.chip', s), segs: JSON.parse(svg.dataset.segs), len: 1, raf: 0 });
+  });
+  function measureSteps() {
+    STEPS.forEach(st => {
+      st.len = st.base.getTotalLength() || 1;
+      const fr = [0];
+      let acc = 0;
+      st.segs.forEach(d => {
+        const p = document.createElementNS(SVGNS, 'path');
+        p.setAttribute('d', d);
+        st.svg.appendChild(p);
+        acc += p.getTotalLength();
+        p.remove();
+        fr.push(Math.min(1, acc / st.len));
+      });
+      const inv = f => Math.acos(1 - 2 * f) / Math.PI; /* kebalikan easeInOutSine */
+      st.chips.forEach((c, k) => { c.dataset.d = String(Math.round(ST_START + ST_RUN * inv(fr[k]))); });
+    });
+  }
+  function placeDot(st, len) {
+    const p = st.base.getPointAtLength(len);
+    st.dot.setAttribute('cx', p.x.toFixed(1));
+    st.dot.setAttribute('cy', p.y.toFixed(1));
+  }
+  function stepsAt(st, e) {
+    placeDot(st, e * st.len);
+    st.prog.style.strokeDashoffset = String(1 - e);
+    st.dot.classList.toggle('gone', e >= 1);
+  }
+  function stepsRest(i, done) {
+    const st = STEPS.get(i);
+    if (!st) return;
+    cancelAnimationFrame(st.raf);
+    stepsAt(st, done ? 1 : 0);
+  }
+  function stepsStopAll() { STEPS.forEach(st => cancelAnimationFrame(st.raf)); }
+  function runSteps(i) {
+    const st = STEPS.get(i);
+    if (!st) return;
+    stepsRest(i, false);
+    const t0 = performance.now() + ST_START * T(), dur = ST_RUN * T();
+    const tick = now => {
+      const x = Math.max(0, Math.min(1, (now - t0) / dur));
+      stepsAt(st, (1 - Math.cos(Math.PI * x)) / 2);
+      if (x < 1) st.raf = requestAnimationFrame(tick);
+    };
+    st.raf = requestAnimationFrame(tick);
+  }
+
+  /* ---------- Masuk bertahap ---------- */
+  let timers = [];
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+  function setIn(i, on) { mEls(i).forEach(el => el.classList.toggle('is-in', on)); }
+  function snapOut(i) {
+    const s = slides[i];
+    s.classList.add('snap');
+    mEls(i).forEach(el => el.classList.remove('is-in'));
+    void s.offsetWidth;
+    s.classList.remove('snap');
+  }
+  function play(i) {
+    clearTimers();
+    if (isStatic()) {
+      setIn(i, true);
+      stepsRest(i, true);
+      timelinePlay(false);
+      mediaSync();
+      return;
+    }
+    snapOut(i);
+    runSteps(i);
+    mediaSync(true);
+    const k = T();
+    mEls(i).forEach(el => {
+      const d = Number(el.dataset.d || 0);
+      timers.push(setTimeout(() => el.classList.add('is-in'), d * k));
+    });
+    timelinePlay(true);
+  }
+
+  /* ---------- Trek dan perpindahan ---------- */
+  let W = 0;
+  function place(dx) { track.style.transform = `translate3d(${(-state.cur * W + (dx || 0)).toFixed(2)}px, 0, 0)`; }
+  function go(i, opts) {
+    opts = opts || {};
+    if (exporting) return;
+    i = Math.max(0, Math.min(N - 1, i));
+    if (i === state.cur) { place(0); if (state.auto) scheduleAuto(); return; }
+    const prev = state.cur;
+    state.cur = i;
+    slides.forEach((s, k) => { const on = k === i; s.classList.toggle('is-active', on); s.inert = !on; });
+    place(0);
+    if (!isStatic()) {
+      setTimeout(() => {
+        if (state.cur !== prev && !isStatic()) { snapOut(prev); stepsRest(prev, false); }
+      }, 600 * T());
+    }
+    play(i);
+    syncUI();
+    if (!opts.auto) live.textContent = `Slide ${i + 1} dari ${N}: ${META[i].name}`;
+    if (state.auto) scheduleAuto();
+  }
+
+  /* ---------- Geser dengan pointer ---------- */
+  let drag = null;
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || (e.target.closest && e.target.closest('[data-tap]'))) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, lt: performance.now(), v: 0, dx: 0, on: false };
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.on) {
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+      drag.on = true;
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* abaikan */ }
+      stage.classList.add('dragging');
+      clearTimeout(autoTimer);
+    }
+    const now = performance.now();
+    drag.v = (e.clientX - drag.lx) / Math.max(1, now - drag.lt);
+    drag.lx = e.clientX; drag.lt = now;
+    const atEdge = (state.cur === 0 && dx > 0) || (state.cur === N - 1 && dx < 0);
+    drag.dx = atEdge ? dx * 0.3 : dx;
+    place(drag.dx);
+  });
+  function endDrag(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    const d = drag;
+    drag = null;
+    if (!d.on) return;
+    stage.classList.remove('dragging');
+    const thr = W * 0.18;
+    if (d.dx < -thr || d.v < -0.45) go(state.cur + 1);
+    else if (d.dx > thr || d.v > 0.45) go(state.cur - 1);
+    else go(state.cur);
+  }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+  stage.addEventListener('keydown', e => {
+    if (e.target !== stage) return;
+    const map = { ArrowRight: state.cur + 1, ArrowLeft: state.cur - 1, Home: 0, End: N - 1 };
+    if (e.key in map) { e.preventDefault(); go(map[e.key]); }
+  });
+
+  /* ---------- Titik dan putar otomatis ---------- */
+  slides.forEach((s, k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dot';
+    b.setAttribute('aria-label', `Slide ${k + 1}: ${META[k].name}`);
+    const i = document.createElement('i');
+    i.appendChild(document.createElement('b'));
+    b.appendChild(i);
+    b.addEventListener('click', () => go(k));
+    dotsEl.appendChild(b);
+  });
+  /* Progres putar otomatis: satu garis rambut di bawah slide */
+  const fills = [$('#autoBar')];
+  let autoTimer = 0;
+  function scheduleAuto() {
+    clearTimeout(autoTimer);
+    fills.forEach(f => { f.style.transition = 'none'; f.style.transform = 'scaleX(0)'; });
+    if (!state.auto) return;
+    const ms = state.interval * 1000 * T();
+    const f = fills[0];
+    void f.offsetWidth;
+    f.style.transition = `transform ${ms}ms linear`;
+    f.style.transform = 'scaleX(1)';
+    autoTimer = setTimeout(() => go(state.cur + 1 >= N ? 0 : state.cur + 1, { auto: true }), ms);
+  }
+  function setAuto(on) {
+    state.auto = on;
+    btnPlay.setAttribute('aria-pressed', String(on));
+    btnPlay.setAttribute('aria-label', on ? 'Jeda putar otomatis' : 'Putar otomatis');
+    scheduleAuto();
+  }
+  btnPlay.addEventListener('click', () => setAuto(!state.auto));
+  btnPrev.addEventListener('click', () => go(state.cur - 1));
+  btnNext.addEventListener('click', () => go(state.cur + 1));
+  btnReplay.addEventListener('click', () => play(state.cur));
+  btnFocus.addEventListener('click', () => {
+    state.focus = !state.focus;
+    applyFocus();
+    persist();
+  });
+  function applyFocus() {
+    studio.classList.toggle('is-focus', state.focus);
+    btnFocus.setAttribute('aria-pressed', String(state.focus));
+    btnFocus.setAttribute('aria-label', state.focus ? 'Tampilkan panel' : 'Sembunyikan panel');
+  }

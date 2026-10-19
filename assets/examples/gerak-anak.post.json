@@ -1,0 +1,290 @@
+{
+  "brand": "partofphysio",
+  "slug": "gerak-anak",
+  "title": "Carousel gerak anak",
+  "slides": [
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "cover",
+      "kicker": "Gerak anak, pelan-pelan dikenali",
+      "title": "Jatuh bukan selalu karena ceroboh.",
+      "character": "balance"
+    },
+    {
+      "name": "Penjelasan",
+      "theme": "light",
+      "component": "steps",
+      "goal": "Kenapa gerak penting: satu bagian memengaruhi bagian lain.",
+      "title": "Satu bagian tertinggal, semua ikut bergeser.",
+      "steps": [
+        "Satu bagian tertinggal",
+        "Tubuh cari jalan lain",
+        "Gerak jadi boros",
+        "Cepat lelah"
+      ]
+    },
+    {
+      "name": "Perbedaan",
+      "theme": "light",
+      "component": "venn",
+      "goal": "Dua jenis motorik, kasar dan halus.",
+      "title": "Dua gerak, satu tim.",
+      "left": {
+        "label": "Kasar",
+        "sub": "lari, lompat",
+        "icon": "run"
+      },
+      "right": {
+        "label": "Halus",
+        "sub": "genggam, tulis",
+        "icon": "pencil"
+      },
+      "overlap": "Koordinasi",
+      "note": "Keduanya bekerja bersama, misalnya saat menangkap bola."
+    },
+    {
+      "name": "Tanda",
+      "theme": "dark",
+      "component": "list",
+      "art": "observe",
+      "goal": "Lima tanda yang layak dicatat, dengan kalimat bukan diagnosis.",
+      "title": "Lima tanda yang layak dicatat.",
+      "items": [
+        "Lebih sering jatuh dari teman sebaya",
+        "Cepat lelah saat bermain",
+        "Sulit naik turun tangga",
+        "Canggung memegang sendok atau pensil",
+        "Menghindari main lari dan lompat"
+      ],
+      "note": "Tanda ini bukan diagnosis. Catat bila terlihat berulang."
+    },
+    {
+      "name": "Tindakan",
+      "theme": "light",
+      "component": "tiles",
+      "goal": "Tiga kebiasaan kecil yang bisa dicoba hari ini.",
+      "title": "Coba hari ini.",
+      "tiles": [
+        {
+          "icon": "trees",
+          "title": "Main di luar",
+          "text": "Merangkak, memanjat, bergelantung."
+        },
+        {
+          "icon": "ball-basketball",
+          "title": "Lempar bola",
+          "text": "Mata dan tangan jadi kompak."
+        },
+        {
+          "icon": "notebook",
+          "title": "Catat apa yang kamu lihat",
+          "text": "Kapan, di mana, dan seperti apa."
+        }
+      ]
+    },
+    {
+      "name": "Penutup",
+      "theme": "dark",
+      "component": "closing",
+      "title": "Tanya kapan saja.",
+      "lede": "Tidak perlu menunggu anak sakit.",
+      "cta": {
+        "icon": "send",
+        "text": "Kirim pertanyaanmu lewat DM"
+      },
+      "character": "wave"
+    }
+  ],
+  "covers": [
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "cover",
+      "variant": "tags",
+      "art": "feet",
+      "title": "Anakmu sering seperti ini?",
+      "tags": [
+        "Mudah tersandung",
+        "Cepat lelah",
+        "Sulit naik tangga"
+      ],
+      "kicker": "Lima tanda yang layak dicatat"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "hook",
+      "variant": "chat",
+      "art": "phone",
+      "title": "Kak, anakku kok sering jatuh?",
+      "sub": "Jatuh sesekali wajar. Yang perlu dicatat adalah polanya."
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "cover",
+      "variant": "strike",
+      "art": "run",
+      "title": "Anak sering jatuh karena ceroboh.",
+      "focus": "ceroboh",
+      "kicker": "Kadang ada sebab lain"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "stat",
+      "variant": "top",
+      "art": "clock",
+      "value": "60",
+      "title": "Menit gerak aktif anak setiap hari.",
+      "sub": "Saran WHO untuk usia 5 sampai 17 tahun."
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "cover",
+      "variant": "poster",
+      "art": "grow",
+      "title": "Gerak anak tumbuh lewat bermain.",
+      "kicker": "Kenali tandanya, coba hari ini"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "cover",
+      "variant": "circle",
+      "art": "chart",
+      "title": "Yang penting polanya.",
+      "focus": "polanya",
+      "kicker": "Jatuh sesekali itu wajar"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "teaser",
+      "variant": "index",
+      "art": "checklist",
+      "title": "Anak sering jatuh, perlu cemas?",
+      "items": [
+        "Kenapa gerak saling terkait",
+        "Gerak kasar dan halus",
+        "Lima tanda yang dicatat",
+        "Tiga hal dicoba hari ini"
+      ],
+      "kicker": "Geser sampai akhir"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "contrast",
+      "variant": "turn",
+      "art": "brain",
+      "before": "Dikira ceroboh.",
+      "title": "Koordinasinya sedang tumbuh.",
+      "kicker": "Gerak anak, pelan-pelan dikenali"
+    },
+    {
+      "name": "Cover",
+      "theme": "light",
+      "component": "hook",
+      "variant": "scale",
+      "title": "Seberapa sering anakmu jatuh?",
+      "ends": {
+        "left": "Jarang",
+        "right": "Setiap hari"
+      },
+      "sub": "Ingat jawabanmu, cocokkan di slide 4."
+    },
+    {
+      "name": "Cover",
+      "theme": "light",
+      "component": "teaser",
+      "variant": "search",
+      "art": "observe",
+      "title": "Anak sering jatuh, normal?",
+      "suggest": [
+        "Anak sering jatuh saat berlari",
+        "Kapan anak jatuh perlu dicek"
+      ],
+      "kicker": "Pertanyaan yang sering dicari orang tua"
+    },
+    {
+      "name": "Cover",
+      "theme": "dark",
+      "component": "hook",
+      "variant": "quiz",
+      "art": "question",
+      "title": "Kenapa anak sering tersandung?",
+      "choices": [
+        "Memang ceroboh",
+        "Kurang tidur",
+        "Otot kakinya cepat lelah"
+      ],
+      "sub": "Bisa lebih dari satu. Kita bahas pelan-pelan."
+    }
+  ],
+  "closings": [
+    {
+      "name": "Penutup",
+      "theme": "dark",
+      "component": "action",
+      "variant": "save",
+      "art": "save",
+      "title": "Simpan daftar tandanya.",
+      "points": [
+        "Lima tanda yang layak dicatat",
+        "Tiga hal untuk dicoba hari ini"
+      ],
+      "cta": {
+        "icon": "send",
+        "text": "Kirim ke pasanganmu juga"
+      }
+    },
+    {
+      "name": "Penutup",
+      "theme": "dark",
+      "component": "prompt",
+      "variant": "options",
+      "art": "jump",
+      "title": "Anakmu lebih suka yang mana?",
+      "options": [
+        "Lari dan lompat",
+        "Menyusun balok"
+      ],
+      "cta": {
+        "icon": "message-circle",
+        "text": "Tulis A atau B di komentar"
+      }
+    },
+    {
+      "name": "Penutup",
+      "theme": "light",
+      "component": "recap",
+      "variant": "ticks",
+      "art": "checklist",
+      "title": "Yang perlu diingat.",
+      "points": [
+        "Jatuh sesekali itu wajar",
+        "Catat bila terlihat berulang",
+        "Tanya fisioterapis bila ragu"
+      ],
+      "cta": {
+        "icon": "send",
+        "text": "Kirim pertanyaanmu lewat DM"
+      }
+    },
+    {
+      "name": "Penutup",
+      "theme": "dark",
+      "component": "prompt",
+      "variant": "ask",
+      "art": "playground",
+      "title": "Anakmu paling suka main apa?",
+      "cta": {
+        "icon": "message-circle",
+        "text": "Ceritakan di kolom komentar"
+      }
+    }
+  ]
+}
