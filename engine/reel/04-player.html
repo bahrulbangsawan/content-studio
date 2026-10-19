@@ -58,7 +58,7 @@
   }
 
   /* ---------- Adegan ---------- */
-  const rf = $('#rf'), ov = $('#ov'), chrome = $('#chrome'), chromeN = $('#chromeN'), capL = $('#capL'), guide = $('#guide');
+  const rf = $('#rf'), ov = $('#ov'), hdr = $('#hdr'), capL = $('#capL'), guide = $('#guide');
   const secEls = $$('.scene', rf);
   const REG = secEls.map(sec => {
     const items = [];
@@ -188,6 +188,15 @@
     capL.replaceChildren(plate);
   }
 
+  function headerFor(s) {
+    const dark = s.theme === 'dark' && !s.bleed;
+    hdr.hidden = !DATA.videoRules.headerBrand;
+    hdr.classList.toggle('on-media', !!s.bleed);
+    ov.classList.toggle('is-dark', s.theme === 'dark');
+    ov.classList.toggle('is-light', s.theme !== 'dark');
+    $$('.lg-l', ov).forEach(e => { e.hidden = dark; });
+    $$('.lg-d', ov).forEach(e => { e.hidden = !dark; });
+  }
   let lastK = -1;
   function render(t) {
     t = clamp(t, 0, Math.max(0, total - 0.001));
@@ -201,17 +210,9 @@
     drawScene(i, tau);
     if (tr >= 0) { drawScene(tr, SC[tr].dur + tau); trans(tr, i, tau / s.trLen, s.tr); }
     else untrans(i);
-    /* Bilah akun hanya di adegan isi tanpa footage penuh; ikut warna adegan */
+    /* Header (logo dan handle) di setiap adegan, ikut warna adegan yang dominan; di atas footage memakai kartu */
     const p = tr >= 0 ? E.inout(tau / s.trLen) : 1;
-    const co = (tr >= 0 ? (SC[tr].chrome ? 1 - p : 0) : 0) + (s.chrome ? p : 0);
-    chrome.style.opacity = co < 0.999 ? co.toFixed(3) : '';
-    chrome.hidden = co <= 0.001;
-    const dark = (tr >= 0 && p < 0.5 ? SC[tr].theme : s.theme) === 'dark';
-    ov.classList.toggle('is-dark', dark);
-    ov.classList.toggle('is-light', !dark);
-    $$('.lg-l', ov).forEach(e => { e.hidden = dark; });
-    $$('.lg-d', ov).forEach(e => { e.hidden = !dark; });
-    chromeN.textContent = k > 0 && k < seq.length - 1 ? `${k}/${seq.length - 2}` : '';
+    headerFor(tr >= 0 && p < 0.5 ? SC[tr] : s);
     captions(i, tau, tr < 0 || tau > s.trLen * 0.6);
     if (k !== lastK) { lastK = k; onScene(k); }
     ui();
@@ -506,27 +507,33 @@
   }
 
   /* ---------- Pemeriksaan di halaman: zona, ukuran huruf, tumpang tindih, kata terpotong, teks di atas foto ---------- */
-  const META_TEXT = '.r-src, .r-refs, .r-disc, .r-ev-src, .r-meta, .r-handle, .chrome, .r-of';
+  const META_TEXT = '.r-src, .r-refs, .r-disc, .r-ev-src, .r-meta, .r-handle, .r-of';
   const VR = DATA.videoRules, ZN = DATA.zones;
-  /* Guide labels carry the account's numbers */
-  (function guideLabels() {
+  const marginAt = y => ZN.steps.reduce((m, [y0, r]) => (y >= y0 ? Math.max(m, r) : m), ZN.right);
+  /* Garis bantu zona aman, digambar dari angka akun: area tertutup aplikasi (merah), isi (hijau), subtitle (biru) */
+  (function drawGuide() {
+    const box = (cls, x, y, w, h, label) => {
+      const e = document.createElement('i');
+      e.className = cls;
+      Object.assign(e.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+      guide.append(e);
+      if (label) { const l = document.createElement('span'); l.className = 'g-lab' + (cls === 'g-line' ? ' g-lab-c' : cls === 'g-cap' ? ' g-lab-b' : ''); l.textContent = label; Object.assign(l.style, { left: (x + 12) + 'px', top: (y + 10) + 'px' }); guide.append(l); }
+    };
     const pc = n => `${Math.round(n / 19.2 * 10) / 10}%`.replace('.', ',');
-    $('#gTop').textContent = `Atas Instagram: 0 sampai ${ZN.top} px (${pc(ZN.top)})`;
-    $('#gBottom').textContent = `Bawah Instagram: ${ZN.bottom} sampai 1920 px (${pc(1920 - ZN.bottom)})`;
-    $('#gRail').textContent = `Tombol: dari ${ZN.rail.y} px`;
-    $('#gContent').textContent = `Zona konten ${ZN.content.w} x ${ZN.content.h}`;
-    $('#gCap').textContent = `Subtitle ${VR.captionTop} sampai ${VR.captionBottom}`;
+    box('g-ig', 0, 0, 1080, ZN.top, `Header ${ZN.top} px (${pc(ZN.top)}): logo dan handle`);
+    box('g-ig', 0, ZN.bottom, 1080, 1920 - ZN.bottom, `Bawah ${1920 - ZN.bottom} px (${pc(1920 - ZN.bottom)}): nama, caption, tombol`);
+    box('g-side', 0, ZN.top, ZN.left, ZN.bottom - ZN.top);
+    const cuts = [ZN.top, ...ZN.steps.map(([y]) => y).filter(y => y > ZN.top && y < ZN.bottom), ZN.bottom];
+    for (let k = 0; k + 1 < cuts.length; k++) { const m = marginAt(cuts[k]); box(k ? 'g-ig g-rail' : 'g-side', 1080 - m, cuts[k], m, cuts[k + 1] - cuts[k], k ? `Kanan ${m} px` : ''); }
+    box('g-line', ZN.content.x, ZN.content.y, ZN.content.w, ZN.content.h, `Isi ${ZN.content.w} x ${ZN.content.h}`);
+    box('g-cap', ZN.caption.x, ZN.caption.y, ZN.caption.w, ZN.caption.h, 'Subtitle');
   })();
   function showOnly(i, tau) {
     REG.forEach((R, j) => { const v = j === i; if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; } untrans(j); });
     drawScene(i, tau);
     capKey = '';
     captions(i, tau, true);
-    const s = SC[i];
-    chrome.hidden = !s.chrome; chrome.style.opacity = '';
-    ov.classList.toggle('is-dark', s.theme === 'dark'); ov.classList.toggle('is-light', s.theme !== 'dark');
-    $$('.lg-l', ov).forEach(e => { e.hidden = s.theme === 'dark'; });
-    $$('.lg-d', ov).forEach(e => { e.hidden = s.theme !== 'dark'; });
+    headerFor(SC[i]);
   }
   function measure(i) {
     showOnly(i, SC[i].settle);
@@ -545,12 +552,13 @@
       const range = document.createRange();
       range.selectNodeContents(node);
       const rects = Array.from(range.getClientRects()).map(box).filter(r => r.w > 1 && r.h > 1);
-      const fs = parseFloat(getComputedStyle(pe).fontSize);
+      /* Ukuran seperti tampil di video: adegan dirancang 800 px lalu diperkecil ke zona aman */
+      const fs = parseFloat(getComputedStyle(pe).fontSize) * (pe.closest('.cz-close') ? ZN.closeZoom : pe.closest('.cz') ? ZN.zoom : 1);
       const meta = !!pe.closest(META_TEXT);
       minPx = Math.min(minPx, fs);
       const minFs = meta ? VR.minMetaPx : VR.minTextPx;
       if (fs < minFs - 0.5) res.min.push(`"${node.textContent.trim().slice(0, 24)}" ${Math.round(fs)} px (minimal ${minFs})`);
-      for (const r of rects) if (r.x + r.w > ZN.rail.x + 2 && r.y + r.h > ZN.rail.y + 2 && VR.railWidth > 0) { res.rail.push(`"${node.textContent.trim().slice(0, 24)}" di area tombol Instagram`); break; }
+      for (const r of rects) { const m = Math.max(marginAt(r.y), marginAt(r.y + r.h)); if (r.x + r.w > 1080 - m + 2) { res.rail.push(`"${node.textContent.trim().slice(0, 24)}" di area tombol (margin kanan ${m} px)`); break; } }
       for (const r of rects) {
         if (r.x < z.x - 3 || r.x + r.w > z.x + z.w + 3 || r.y < z.y - 3 || r.y + r.h > z.y + z.h + 3) { res.zone.push(`"${node.textContent.trim().slice(0, 24)}" keluar zona konten`); break; }
       }
@@ -600,7 +608,7 @@
     render(keep);
     const list = $('#chkList');
     list.replaceChildren();
-    const names = { zone: 'zona konten', rail: 'tombol Instagram', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
+    const names = { zone: 'zona aman', rail: 'kolom tombol', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
     let bad = 0;
     results.forEach(r => {
       const fails = Object.keys(r.ok).filter(key => !r.ok[key]);

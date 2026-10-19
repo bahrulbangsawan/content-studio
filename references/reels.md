@@ -72,7 +72,16 @@ Voice over adalah isi utama. Teks di layar hanya kata kunci dan angka yang dilih
 - **Jeda dan napas** memakai tag bahasa Inggris di dalam `vo`, dan tag ini tidak tampil di subtitle:
   - `<short pause>`, `<long pause>`, `<breath>`
 - **Penekanan dengan huruf kapital** dibaca lebih tegas oleh Gemini, tetapi ikut tampil di subtitle. Pakai sesekali.
-- **Gaya bicara** diatur sekali di `voice.style` (misalnya "hangat dan tenang, seperti fisioterapis menjelaskan ke orang tua, tempo sedang"). Per adegan pakai `tone` (misalnya "lebih pelan dan serius"). Gaya singkat bekerja paling baik. Jangan menulis umur, jenis kelamin, atau aksen di gaya; pilih suaranya.
+- **Interaktif dan bersemangat, bukan seperti dongeng.**
+  - Sapa penonton langsung ("kamu", "si kecil").
+  - Tanya, lalu jawab ("Faktanya?", "Hampir sama, kan?").
+  - Pakai kalimat pendek dan bahasa lisan yang wajar.
+- **Gaya bicara** diatur sekali di `voice.style`, dengan bahasa Inggris yang paling dipatuhi model. Bawaannya: "Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation."
+  - Per adegan pakai `tone`, tapi `tone` yang berbeda menambah permintaan TTS.
+  - Jangan menulis umur, jenis kelamin, atau aksen di gaya; pilih suaranya. Suara bawaan Laomedeia (bersemangat).
+- **Istilah bahasa Inggris** ditulis dalam bentuk aslinya (follow, screen time, W-sitting) dan diucapkan dengan lafal Inggris.
+  - Kata yang tetap terbaca ala Indonesia diberi cara ucap di `voice.pronounce` (reel ini) atau `pronounce` di brand.json (semua reel akun), misalnya { "partofphysio": "part of physio" }.
+  - Subtitle tetap menampilkan tulisan aslinya.
 - Aturan akun tetap berlaku untuk suara dan teks layar: tanpa tanda seru bila akun melarang, tanpa frasa terlarang, dan tanpa ajakan mengetuk layar. Ajakan ikuti, simpan, kirim, dan komentar boleh.
 
 ## 4. Bukti ilmiah
@@ -279,11 +288,11 @@ Varian: `follow` ikuti (logo besar), `save` simpan, `share` kirim, `comment` per
   2. Jeda yang terdengar di klip, dicocokkan dengan tanda baca naskah.
   3. Perkiraan dari naskah.
 - **Transisi.** Bawaannya bergiliran: `up`, `wipe`, `zoom`, `slide`, `circle`, `fade`. Footage penuh memakai `fade` atau `zoom`. Isi `transition` hanya bila ingin efek tertentu; `cut` untuk potongan langsung.
-- **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 24 karakter), di pelat kartu, dengan kata yang diucapkan disorot.
+- **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 22 karakter) di kaki zona aman, di pelat kartu, dengan kata yang diucapkan disorot.
   - Disembunyikan otomatis di adegan yang teks layarnya sama dengan suaranya, dan di penutup.
   - `"captions": false` mematikan semuanya.
   - Ekspor SRT selalu berisi seluruh voice over.
-- **Bilah akun.** Logo dan handle kecil di atas adegan isi, dengan nomor adegan. Tidak tampil di pembuka, penutup, dan footage penuh.
+- **Header.** Logo dan handle tampil di header setiap adegan, di atas zona aman (bisa dimatikan dengan `videoRules.headerBrand`). Di atas footage, header memakai kartu supaya terbaca. Tidak ada nomor adegan.
 
 ## 8. Footage dan foto
 
@@ -325,7 +334,7 @@ Jangan mengambil gambar dari postingan orang lain.
   - `--no-batch` membuat satu permintaan per kalimat.
 - **Kuota habis (429)** tercetak beserta waktu tunggunya. Klip yang sudah jadi tetap disimpan, dan menjalankan ulang `voice` hanya membuat yang belum ada.
 - **Suara Gemini.** Lihat daftarnya dengan `voice list`.
-  - Yang cocok untuk edukasi kesehatan berbahasa Indonesia: Sulafat (hangat), Achird (ramah), Vindemiatrix (lembut), Kore (tegas), dan Charon (informatif).
+  - Yang cocok untuk edukasi yang bersemangat: Laomedeia dan Puck (bersemangat), Sadachbia (hidup), Zephyr dan Autonoe (cerah). Untuk nada lebih tenang: Sulafat (hangat), Achird (ramah), Charon (informatif).
   - Dengar dulu: `voice try "Kalimat contoh." --voice Achird`.
   - Model bawaan `gemini-3.8-flash-tts`. Lebih hemat: `--model gemini-3.8-flash-lite-tts`.
 - **Musik** opsional, dari berkas milik pemilik akun yang lisensinya jelas.
@@ -350,7 +359,7 @@ Jangan mengambil gambar dari postingan orang lain.
 
 - teks di dalam zona konten akun
 - tidak ada teks di area tombol Instagram
-- ukuran huruf minimal `minTextPx` untuk isi dan `minMetaPx` untuk sumber dan disclaimer (bawaan 40 px dan 30 px)
+- ukuran huruf minimal `minTextPx` untuk isi dan `minMetaPx` untuk sumber dan disclaimer (bawaan 32 px dan 26 px, seperti tampil di video)
 - tidak ada bagian yang saling menimpa
 - tidak ada kata terpotong di tengah
 - tidak ada teks langsung di atas foto
@@ -382,22 +391,24 @@ Jangan mengecilkan huruf atau mengedit HTML hasil build.
 
 ## 12. Zona aman dan aturan video
 
-Video punya zona dan aturannya sendiri, terpisah dari carousel. Video ditonton penuh layar di bawah bilah Reels, nama akun, caption, dan tombol Instagram, beberapa detik per adegan. Carousel dibaca sambil digeser, dengan header dan footer di dalam slide.
+Video punya zona dan aturannya sendiri, terpisah dari carousel. Video ditonton penuh layar di bawah bilah atas aplikasi, nama akun, caption, dan kolom tombol, beberapa detik per adegan. Carousel dibaca sambil digeser, dengan header dan footer di dalam slide.
+
+Zona aman bawaan adalah area yang aman di dua template 9:16 sekaligus: panduan TikTok 540 x 960 (dikali dua) dan template 1080 x 1920.
 
 | | Carousel (`rules`) | Reels (`videoRules`) |
 | --- | --- | --- |
 | Bingkai | 1080 x 1350, 4:5 | 1080 x 1920, 9:16 |
-| Bebas teks di atas | header slide 168 px (logo, nomor) | 270 px, 14% (bilah Reels Instagram) |
-| Bebas isi penting di bawah | footer slide 168 px (handle, geser) | 672 px, 35% (nama, caption, audio); hanya subtitle dan catatan kaki penutup di pita subtitle |
-| Samping | 96 px | kiri 90 px; kanan 132 px karena kolom tombol (x 960 ke kanan, dari y 1100) |
-| Zona konten | x 96 sampai 984, y 168 sampai 1182 | x 90 sampai 948, y 334 sampai 1248 (di bawah bilah akun); adegan pertama dan terakhir dari y 270 |
-| Huruf terkecil | 30 px | 40 px isi, 30 px sumber |
-| Panjang teks | kata per slide, judul | kata per adegan dan voice over per jenis adegan; kecepatan suara paling cepat 3,2 kata per detik |
-| Waktu | animasi masuk sampai 1,2 detik | pembuka 5 detik, adegan 14 detik, total 15 sampai 90 detik (batas 180) |
+| Atas | header slide 168 px (logo, nomor) | header 252 px: logo dan handle, di luar zona aman |
+| Bawah | footer slide 168 px (handle, geser) | 704 px tanpa isi (nama, caption, audio, tombol) |
+| Samping | 96 px | kiri 120 px; kanan 120 px, lalu 240 px dari y 360 dan 300 px dari y 840 (kolom tombol) |
+| Isi | x 96 sampai 984, y 168 sampai 1182 | x 120 sampai 780, y 252 sampai 1044; penutup sampai y 1216 |
+| Subtitle | tidak ada | y 1060 sampai 1216, di dalam zona aman |
+| Nomor | nomor slide di header | tidak ada |
+| Huruf terkecil | 30 px | 32 px isi, 26 px sumber (seperti tampil di video) |
+| Waktu | animasi masuk sampai 1,2 detik | suara paling cepat 4 kata per detik, pembuka 5 detik, adegan 14 detik, total 15 sampai 90 detik (batas 180) |
 
-- **Mengatur.** Pemilik akun bisa mengubah setiap angka video di `brand.json` bagian `videoRules`. Kunci, bawaan, dan batasnya ada di `references/brand-setup.md`.
-  - Tata letak adegan, garis panduan zona di studio (tombol zona, atau tekan Z), pemeriksaan di browser, dan scan semuanya memakai angka itu.
-  - Ubah hanya atas permintaan pemilik akun, lalu jalankan `brand accept` setelah mereka setuju, seperti perubahan akun lainnya.
-- **Melihat.** `content-studio brand rules --id <akun>` mencetak aturan carousel dan aturan video berdampingan, beserta asalnya (bawaan, akun, atau ikut carousel).
-- **Di studio Reels.** Tab Panduan menampilkan zona dan aturan video akun ini.
-
+- **Ukuran adegan.** Adegan dirancang 800 px lebar lalu diperkecil agar pas dengan lebar zona aman (bawaan 83%). Semua tata letak tetap proporsional, dan ukuran huruf diperiksa seperti tampil di video.
+- **Mengatur.** Pemilik akun bisa mengubah setiap angka di `brand.json` bagian `videoRules`. Bisa juga memilih `preset` `tiktok-540` atau `template-1080` untuk memakai salah satu template saja. Kunci dan batasnya ada di `references/brand-setup.md`.
+  - Tata letak, garis panduan zona di studio (tombol zona, atau tekan Z), pemeriksaan, dan scan semuanya memakai angka itu.
+  - Ubah hanya atas permintaan pemilik akun, lalu jalankan `brand accept` setelah mereka setuju.
+- **Melihat.** `content-studio brand rules --id <akun>` mencetak aturan carousel dan aturan video berdampingan. Tab Panduan di studio Reels menampilkan zona dan aturan video akun ini.

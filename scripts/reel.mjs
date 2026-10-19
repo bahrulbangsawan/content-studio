@@ -172,7 +172,7 @@ async function verify() {
     const D = await evalJs('JSON.parse(JSON.stringify({ seq: window.__reelCore.DATA.seq, scenes: window.__reelCore.DATA.scenes.map(s => ({ name: s.name, dur: s.dur, estimated: s.estimated })) }))');
     const role = i => { const h = D.seq.hooks.indexOf(i), c = D.seq.closings.indexOf(i), m = D.seq.main.indexOf(i); return h >= 0 ? (h ? `pembuka ${h + 1}` : '1') : c >= 0 ? (c ? `penutup ${c + 1}` : String(D.seq.main.length + 2)) : String(m + 2); };
     const file = i => { const h = D.seq.hooks.indexOf(i), c = D.seq.closings.indexOf(i), m = D.seq.main.indexOf(i); return h > 0 ? `hook-${h + 1}` : c > 0 ? `closing-${c + 1}` : `scene-${h === 0 ? 1 : c === 0 ? D.seq.main.length + 2 : m + 2}`; };
-    const names = { zone: 'zona konten', rail: 'tombol Instagram', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
+    const names = { zone: 'zona aman', rail: 'kolom tombol', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
     console.log(`\nPemeriksaan di browser: posts/${slug}/${slug}.html\n${'─'.repeat(60)}`);
     for (const r of rows) {
       const bad = Object.keys(r.ok).filter(k => !r.ok[k]);
@@ -226,7 +226,7 @@ function newReel() {
   const reel = {
     brand: brandId, slug, title,
     caption: 'TODO: teks posting Instagram, satu sampai tiga kalimat, lalu tagar.',
-    voice: { provider: 'gemini', voice: 'Sulafat', style: 'hangat dan tenang, seperti fisioterapis menjelaskan ke orang tua, tempo sedang' },
+    voice: { provider: 'gemini', voice: 'Laomedeia', style: 'Energetic, enthusiastic creator talking straight to the viewer; upbeat, conversational, brisk pace, lively intonation. Say English words and names with native English pronunciation.' },
     captions: true,
     sources: [{ id: 's1', short: 'TODO: Penulis dkk., tahun', cite: 'TODO: sitasi lengkap. Cari dengan content-studio evidence search', doi: '10.0000/TODO' }],
     scenes: [

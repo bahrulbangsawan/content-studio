@@ -15,7 +15,7 @@ const voKeyOf = s => createHash('sha256').update(JSON.stringify([String(s.vo || 
 
 const POST_KEYS = ['brand', 'slug', 'title', 'format', 'caption', 'voice', 'captions', 'music', 'sources', 'scenes', 'hooks', 'closings'];
 const SOURCE_KEYS = ['id', 'cite', 'short', 'doi', 'pmid', 'url', 'year', 'note', 'verified', 'design'];
-const VOICE_KEYS = ['provider', 'voice', 'style', 'model', 'language'];
+const VOICE_KEYS = ['provider', 'voice', 'style', 'model', 'language', 'pronounce'];
 const MEDIA_KEYS = ['src', 'alt', 'focus', 'from', 'move', 'still'];
 const PLACEHOLDER = /\bTODO\b|lorem ipsum|\[[^\]]{2,}\]|\bxxx\b/i;
 /* A claim of research or a figure in the voice or on screen needs a source on that scene */
@@ -41,7 +41,8 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     else {
       for (const k of Object.keys(v)) if (!VOICE_KEYS.includes(k)) errors.push(`voice.${k} tidak dikenal. Pilihan: ${VOICE_KEYS.join(', ')}.`);
       if (v.provider && !['gemini', 'say', 'none'].includes(v.provider)) errors.push('voice.provider: gemini, say (suara Mac untuk pratinjau), atau none.');
-      if (v.style && String(v.style).length > 200) errors.push('voice.style maksimal 200 karakter. Gaya singkat bekerja paling baik.');
+      if (v.style && String(v.style).length > 240) errors.push('voice.style maksimal 240 karakter. Gaya singkat bekerja paling baik.');
+      if (v.pronounce !== undefined && (typeof v.pronounce !== 'object' || Array.isArray(v.pronounce) || Object.values(v.pronounce).some(x => typeof x !== 'string'))) errors.push('voice.pronounce harus objek { "W-sitting": "double-u sitting" }: cara suara mengucapkan kata itu.');
     }
   }
 
@@ -159,7 +160,9 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     else {
       const w = voWords(s.vo).length;
       if (w > def.vo) errors.push(`${path}.vo: ${w} kata, maksimal ${def.vo} untuk ${def.label.toLowerCase()} (sekitar ${Math.round(def.vo / 2.3)} detik). Pecah ke adegan berikutnya.`);
-      if (role === 'open' && w / 2.3 > rules.hookMaxSeconds) warnings.push(`${path}.vo: ${w} kata, sekitar ${Math.round(w / 2.3)} detik. Pembuka akun ini selesai dalam ${rules.hookMaxSeconds} detik (videoRules.hookMaxSeconds).`);
+      /* Length of the opening: the recorded clip when there is one, else an estimate */
+      const hc = audio && audio.clips && audio.clips[voKeyOf(s)], sec = hc && hc.map ? hc.map.end : w / 2.3;
+      if (role === 'open' && sec > rules.hookMaxSeconds) warnings.push(`${path}.vo: ${w} kata, ${hc ? '' : 'sekitar '}${sec.toFixed(1).replace('.', ',')} detik. Pembuka akun ini selesai dalam ${rules.hookMaxSeconds} detik (videoRules.hookMaxSeconds).`);
       texts.push({ path: `${path}.vo`, text: spoken(s.vo), onScreen: false });
       /* Pace of the recorded clip, when there is one */
       const clip = audio && audio.clips && audio.clips[voKeyOf(s)];

@@ -103,7 +103,7 @@ if (cmd === 'init') {
   show('Aturan carousel (rules): slide 1080 x 1350', rules, brand.rules, DEFAULT_RULES);
   show('Aturan video (videoRules): Reels 1080 x 1920', videoRules, brand.videoRules, DEFAULT_VIDEO_RULES);
   const z = videoZones(videoRules);
-  console.log(`\nZona video: teks di x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.bottom} (adegan pertama dan terakhir dari y ${z.top}); subtitle y ${videoRules.captionTop} sampai ${videoRules.captionBottom}; tombol kanan x ${z.rail.x} ke kanan dari y ${z.rail.y}.`);
+  console.log(`\nZona aman video: header y 0 sampai ${z.top} (logo dan handle), isi x ${z.content.x} sampai ${z.content.x + z.content.w} dan y ${z.content.y} sampai ${z.content.y + z.content.h}, subtitle y ${videoRules.captionTop} sampai ${videoRules.captionBottom}, bawah dari y ${z.bottom}. Margin kanan ${z.right} px${z.steps.length ? ', ' + z.steps.map(([y, r]) => `${r} px dari y ${y}`).join(', ') : ''}.${videoRules.preset ? ` Preset: ${videoRules.preset}.` : ''}`);
   console.log('Zona carousel: header y 0 sampai 168, konten y 168 sampai 1182 dan x 96 sampai 984, footer y 1182 sampai 1350.');
   console.log('Ubah hanya atas permintaan pemilik: edit brand.json (rules atau videoRules), brand.mjs check, lalu accept setelah pemilik setuju.\n');
 } else if (cmd === 'list') {

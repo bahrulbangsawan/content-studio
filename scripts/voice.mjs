@@ -60,6 +60,13 @@ const reelPath = join(dir, 'reel.json');
 if (!existsSync(reelPath)) fail(`posts/${slug}/reel.json tidak ada. Voice over hanya untuk reel.`);
 const reel = readJson(reelPath, 'reel.json');
 const cfg = settings(reel);
+/* How English words and names are said: the account's list (brand.json "pronounce"), then this reel's
+   (voice.pronounce). The TTS reads the respelling; captions keep the script as written. */
+let brandPron = {};
+try { brandPron = JSON.parse(readFileSync(join(root, 'brands', reel.brand, 'brand.json'), 'utf8')).pronounce || {}; } catch (e) { /* no account yet */ }
+const PRON = Object.entries({ ...brandPron, ...((reel.voice && reel.voice.pronounce) || {}) }).sort((a, b) => b[0].length - a[0].length);
+const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ttsText = vo => PRON.reduce((t, [w, say]) => t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escRe(w)}(?![\\p{L}\\p{N}])`, 'giu'), say), String(vo).trim());
 const audioDir = join(dir, 'audio');
 mkdirSync(audioDir, { recursive: true });
 const manPath = join(audioDir, 'voice.json');
@@ -68,18 +75,20 @@ const scenes = [...reel.scenes, ...(reel.hooks || []), ...(reel.closings || [])]
 const want = new Map(scenes.map(s => [voKey(s), s]));
 const align = !args['no-align'] && !!sttProvider();
 const sameVoice = c => c && c.provider === cfg.provider && c.voice === cfg.voice && (c.style || '') === (cfg.style || '') && (c.model || '') === (cfg.model || '');
-const todo = [...want.entries()].filter(([k]) => args.force || !sameVoice(man.clips[k]) || !existsSync(join(audioDir, man.clips[k].file)) || (align && !man.clips[k].words));
+/* A clip is current when its voice settings and the words the TTS read are unchanged */
+const current = (c, s) => sameVoice(c) && (c.tts || c.text) === ttsText(s.vo);
+const todo = [...want.entries()].filter(([k, s]) => args.force || !current(man.clips[k], s) || !existsSync(join(audioDir, man.clips[k].file)) || (align && !man.clips[k].words));
 
 console.log(`\nVoice over posts/${slug}: ${want.size} kalimat, ${todo.length} perlu dibuat (${cfg.provider}${cfg.model ? ' ' + cfg.model : ''}, suara ${cfg.voice}${cfg.style ? `, gaya "${cfg.style}"` : ''})${align ? `, waktu per kata lewat ${sttProvider()}` : ''}.`);
 if (cfg.provider === 'say') console.log('  Suara Mac hanya untuk pratinjau. Untuk publikasi pakai Gemini: content-studio setup, lalu --provider gemini.');
 let done = 0, failed = 0, requests = 0, stopped = '';
 const lang = (reel.voice && reel.voice.language) || 'id';
-const fresh = todo.filter(([k]) => args.force || !sameVoice(man.clips[k]) || !existsSync(join(audioDir, man.clips[k].file)));
+const fresh = todo.filter(([k, s]) => args.force || !current(man.clips[k], s) || !existsSync(join(audioDir, man.clips[k].file)));
 const alignOnly = todo.filter(x => !fresh.includes(x));
 
 function clipOf(wav, file, s) {
   const w = readWav(wav), map = speechMap(w);
-  return { file, dur: +w.duration.toFixed(3), map: { start: +map.start.toFixed(3), end: +map.end.toFixed(3), pauses: map.pauses.map(p => ({ from: +p.from.toFixed(3), to: +p.to.toFixed(3) })) }, provider: cfg.provider, voice: cfg.voice, style: cfg.style || '', model: cfg.model || '', text: s.vo };
+  return { file, dur: +w.duration.toFixed(3), map: { start: +map.start.toFixed(3), end: +map.end.toFixed(3), pauses: map.pauses.map(p => ({ from: +p.from.toFixed(3), to: +p.to.toFixed(3) })) }, provider: cfg.provider, voice: cfg.voice, style: cfg.style || '', model: cfg.model || '', text: s.vo, tts: ttsText(s.vo) };
 }
 async function wordsOf(wav) {
   if (!align) return null;
@@ -122,9 +131,9 @@ function splitBatch(wav, weights) {
 /* Second way to cut a take: transcribe it, line the script words up with the heard words, and cut between the
    last word of one line and the first word of the next. Works whatever the pauses sound like. */
 function splitByWords(wav, list, rec) {
-  const w = readWav(wav), counts = list.map(([, s]) => voWords(s.vo).length), total = counts.reduce((a, b) => a + b, 0);
+  const w = readWav(wav), counts = list.map(([, s]) => voWords(ttsText(s.vo)).length), total = counts.reduce((a, b) => a + b, 0);
   if (rec.length < total * 0.6 || rec.length > total * 1.5) return null;
-  const times = wordTimes(list.map(([, s]) => s.vo).join(' '), speechMap(w), rec);
+  const times = wordTimes(list.map(([, s]) => ttsText(s.vo)).join(' '), speechMap(w), rec);
   if (times.length !== total) return null;
   const parts = [];
   let i = 0;
@@ -140,7 +149,7 @@ async function single([key, s]) {
   const style = [cfg.style, s.tone].filter(Boolean).join('; ');
   try {
     requests++;
-    const wav = await tts(cfg.provider, s.vo, { ...cfg, style }), file = `vo-${key}.wav`;
+    const wav = await tts(cfg.provider, ttsText(s.vo), { ...cfg, style }), file = `vo-${key}.wav`;
     writeFileSync(join(audioDir, file), wav);
     const clip = clipOf(wav, file, s), words = await wordsOf(wav);
     if (words && words.length) clip.words = words;
@@ -148,11 +157,11 @@ async function single([key, s]) {
   } catch (e) { failAll([[key, s]], e); if (e.code === 'NO_KEY') throw e; }
 }
 async function batch(list, style) {
-  const text = list.map(([, s]) => String(s.vo).trim()).join(SEP[cfg.provider]);
+  const text = list.map(([, s]) => ttsText(s.vo)).join(SEP[cfg.provider]);
   let wav;
   try { requests++; wav = await tts(cfg.provider, text, { ...cfg, style }); }
   catch (e) { failAll(list, e); if (e.code === 'NO_KEY') throw e; return; }
-  let sp = splitBatch(wav, list.map(([, s]) => Math.max(1, voWords(s.vo).length))), all = null;
+  let sp = splitBatch(wav, list.map(([, s]) => Math.max(1, voWords(ttsText(s.vo)).length))), all = null;
   if (!sp && align) { all = await wordsOf(wav); if (all && all.length) sp = splitByWords(wav, list, all); }
   if (!sp) {
     console.log(`  ! Batas antarkalimat di audio gabungan tidak jelas; ${list.length} kalimat dibuat satu per satu.`);

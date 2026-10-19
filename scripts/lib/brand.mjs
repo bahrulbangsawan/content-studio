@@ -17,52 +17,69 @@ export const DEFAULT_RULES = {
   visualEverySlide: true,
 };
 /* Video rules (Reels, 1080 x 1920): safe zones, reading, pace and length. Separate from the carousel's, because a
-   video is watched full screen under Instagram's buttons and caption, for a few seconds per scene. Zones follow
-   Meta's Reels guidance: keep the top 14 % and bottom 35 % free of key content, 6 % or more at the sides, and the
-   action buttons on the right. Writing rules (banned phrases, exclamation marks) follow the carousel's unless set here. */
+   video is watched full screen under the platform's top bar, caption, name and buttons, a few seconds per scene.
+   The default safe zone is where two common 9:16 templates are both safe (TikTok's 540 x 960 guide doubled, and a
+   1080 x 1920 template): top 252, left 120, right 120 (240 from y 360, 300 from y 840 for the button column),
+   bottom 704. The logo and handle sit in the header above it; subtitles sit at its foot. Writing rules (banned
+   phrases, exclamation marks) follow the carousel's unless set here. */
 export const DEFAULT_VIDEO_RULES = {
-  safeTop: 270,          // px from the top without text: Instagram's top bar (Meta: 14 % = 269)
-  safeBottom: 672,       // px from the bottom without key content: name, caption, audio (Meta: 35 % = 672)
-  safeSide: 90,          // px on each side (Meta: at least 6 % = 65)
-  railWidth: 120,        // the like, comment and share buttons on the right ...
-  railTop: 1100,         // ... from this height down; the content zone keeps its right edge clear of them
-  captionTop: 1268,      // burned-in subtitles and the closing's footnotes sit in this band, under the content
-  captionBottom: 1458,
-  brandBar: true,        // logo and handle at the top of the content zone in middle scenes
-  minTextPx: 40,         // smallest text in a scene
-  minMetaPx: 30,         // smallest source line, disclaimer, handle
-  captionChars: 24,      // characters per subtitle line (BBC: about 25 for vertical video)
+  safeTop: 252,          // px from the top: header (logo and handle) and the platform's top bar; no content
+  safeBottom: 704,       // px from the bottom: name, caption, audio, buttons; no content
+  safeLeft: 120,
+  safeRight: 120,        // right margin at the top of the safe zone ...
+  rightSteps: [[360, 240], [840, 300]], // ... widening to clear the button column: [from y, right margin]
+  captionTop: 1060,      // burned-in subtitles, inside the safe zone at its foot
+  captionBottom: 1216,
+  headerBrand: true,     // logo and handle in the header, above the safe zone, on every scene
+  minTextPx: 32,         // smallest text in a scene, as it appears in the video
+  minMetaPx: 26,         // smallest source line and disclaimer
+  captionChars: 22,      // characters per subtitle line
   captions: true,        // burned-in subtitles by default
-  maxWordsPerSecond: 3.2,  // a voice-over faster than this is hard to follow
+  maxWordsPerSecond: 4,    // an energetic explainer runs 3 to 4 words a second; faster is hard to follow
   hookMaxSeconds: 5,     // the first scene should land within this
   maxSceneSeconds: 14,   // one idea per scene
   minSeconds: 15,        // shorter reels give the idea no room
   maxSeconds: 90,        // longer than this: a warning (explainers do best at 30 to 75 s)
   hardMaxSeconds: 180,   // Instagram recommends reels up to 3 minutes to new viewers
 };
+/* Named sets for the two templates on their own, to start from in videoRules */
+export const VIDEO_PRESETS = {
+  gabungan: {},
+  'tiktok-540': { safeTop: 252, safeBottom: 704, safeLeft: 120, safeRight: 120, rightSteps: [[360, 240]], captionTop: 1060, captionBottom: 1216 },
+  'template-1080': { safeTop: 160, safeBottom: 480, safeLeft: 120, safeRight: 120, rightSteps: [[840, 300]], captionTop: 1284, captionBottom: 1440 },
+};
 const VIDEO_RANGE = {
-  safeTop: [220, 360], safeBottom: [560, 760], safeSide: [65, 140], railWidth: [0, 200], railTop: [800, 1460],
-  captionTop: [1150, 1500], captionBottom: [1300, 1600], minTextPx: [36, 64], minMetaPx: [26, 40], captionChars: [16, 32],
-  maxWordsPerSecond: [2.4, 4], hookMaxSeconds: [2, 8], maxSceneSeconds: [6, 20], minSeconds: [3, 60], maxSeconds: [15, 180], hardMaxSeconds: [30, 900],
+  safeTop: [120, 400], safeBottom: [300, 800], safeLeft: [40, 200], safeRight: [40, 200],
+  captionTop: [700, 1700], captionBottom: [800, 1800], minTextPx: [26, 64], minMetaPx: [22, 40], captionChars: [14, 32],
+  maxWordsPerSecond: [2.4, 4.5], hookMaxSeconds: [2, 8], maxSceneSeconds: [6, 20], minSeconds: [3, 60], maxSeconds: [15, 180], hardMaxSeconds: [30, 900],
 };
 const WRITING = ['noExclamation', 'noEmDash', 'bannedPhrases', 'requireDisclaimer'];
-const BRAND_BAR = 64;
+/* Scenes are laid out at this width and scaled to the safe zone's width, so every layout keeps its proportions */
+export const DESIGN_W = 800;
 
-/** The rules a reel follows: video defaults, the account's writing rules, then the account's videoRules. */
+/** The rules a reel follows: video defaults, a named preset, the account's writing rules, then the account's videoRules. */
 export function videoRulesOf(b) {
   const carousel = { ...DEFAULT_RULES, ...(b.rules || {}) };
-  return { ...DEFAULT_VIDEO_RULES, ...Object.fromEntries(WRITING.map(k => [k, carousel[k]])), ...(b.videoRules || {}) };
+  const own = b.videoRules || {}, preset = VIDEO_PRESETS[own.preset] || {};
+  const { preset: name, ...rest } = own;
+  return { ...DEFAULT_VIDEO_RULES, ...preset, ...Object.fromEntries(WRITING.map(k => [k, carousel[k]])), ...rest, ...(name ? { preset: name } : {}) };
 }
-/** Pixel boxes of the video zones, for the engine, the guide overlay and the checks. */
+/** Right margin at a height: the widest step at or above it. */
+export const marginAt = (v, y) => (v.rightSteps || []).reduce((m, [y0, r]) => (y >= y0 ? Math.max(m, r) : m), v.safeRight);
+/** Pixel boxes of the video zones, for the engine, the guide overlay and the checks. Scenes use one rectangle: the
+    widest right margin it reaches, so no line of text can run under the buttons. */
 export function videoZones(v) {
-  const bottom = 1920 - v.safeBottom, bar = v.brandBar ? BRAND_BAR : 0;
-  /* The right margin also clears the button column, so no line of text can run under it */
-  const right = Math.max(v.safeSide, v.railTop < bottom ? v.railWidth + 12 : 0);
-  return { top: v.safeTop, bottom, side: v.safeSide, right, bar, content: { x: v.safeSide, y: v.safeTop + bar, w: 1080 - v.safeSide - right, h: bottom - v.safeTop - bar }, full: { y: v.safeTop, h: bottom - v.safeTop }, caption: { x: v.railWidth + 28, y: v.captionTop, w: 1080 - 2 * (v.railWidth + 28), h: v.captionBottom - v.captionTop }, rail: { x: 1080 - v.railWidth, y: v.railTop, w: v.railWidth } };
+  const bottom = 1920 - v.safeBottom;
+  const maxMargin = (y0, y1) => Math.max(v.safeRight, ...(v.rightSteps || []).filter(([y]) => y < y1).map(([, r]) => r));
+  const cBottom = v.captions === false ? bottom : v.captionTop - 16;
+  const content = { x: v.safeLeft, y: v.safeTop, w: 1080 - v.safeLeft - maxMargin(v.safeTop, cBottom), h: cBottom - v.safeTop };
+  const close = { x: v.safeLeft, y: v.safeTop, w: 1080 - v.safeLeft - maxMargin(v.safeTop, bottom), h: bottom - v.safeTop };
+  const caption = { x: v.safeLeft, y: v.captionTop, w: 1080 - v.safeLeft - maxMargin(v.captionTop, v.captionBottom), h: v.captionBottom - v.captionTop };
+  return { top: v.safeTop, bottom, left: v.safeLeft, right: v.safeRight, steps: v.rightSteps || [], content, close, caption, zoom: +Math.min(1, content.w / DESIGN_W).toFixed(4), closeZoom: +Math.min(1, close.w / DESIGN_W).toFixed(4) };
 }
 
 const COLOR_KEYS = ['bg', 'card', 'ink', 'muted', 'accent'];
-const ALLOWED_TOP = ['id', 'name', 'handle', 'wordmark', 'language', 'logo', 'font', 'colors', 'disclaimer', 'swipeLabel', 'structure', 'rules', 'videoRules', 'dos'];
+const ALLOWED_TOP = ['id', 'name', 'handle', 'wordmark', 'language', 'logo', 'font', 'colors', 'disclaimer', 'swipeLabel', 'structure', 'rules', 'videoRules', 'pronounce', 'dos'];
 
 export const brandDir = (root, id) => join(root, 'brands', id);
 
@@ -124,25 +141,28 @@ export function validateBrand(b, dir) {
   if (r.titleMax > 10 || r.coverTitleMax > 8) errors.push('Batas judul terlalu longgar: titleMax maksimal 10, coverTitleMax maksimal 8.');
   if (r.requireDisclaimer && !b.disclaimer) errors.push('disclaimer wajib karena rules.requireDisclaimer aktif.');
   if (b.disclaimer && b.disclaimer.length > 140) errors.push('disclaimer maksimal 140 karakter agar muat di footer.');
-  /* Video rules: known keys, sane ranges, and a content zone tall enough for the scene layouts */
+  /* Video rules: known keys, sane ranges, and a safe zone big enough for the scene layouts */
   if (b.videoRules !== undefined && (typeof b.videoRules !== 'object' || Array.isArray(b.videoRules))) errors.push('videoRules harus objek.');
   else if (b.videoRules) {
-    for (const k of Object.keys(b.videoRules)) if (!(k in DEFAULT_VIDEO_RULES) && !WRITING.includes(k)) errors.push(`videoRules.${k} tidak dikenal. Pilihan: ${[...Object.keys(DEFAULT_VIDEO_RULES), ...WRITING].join(', ')}.`);
+    for (const k of Object.keys(b.videoRules)) if (!(k in DEFAULT_VIDEO_RULES) && !WRITING.includes(k) && k !== 'preset') errors.push(`videoRules.${k} tidak dikenal. Pilihan: ${['preset', ...Object.keys(DEFAULT_VIDEO_RULES), ...WRITING].join(', ')}.`);
+    if (b.videoRules.preset !== undefined && !VIDEO_PRESETS[b.videoRules.preset]) errors.push(`videoRules.preset: ${Object.keys(VIDEO_PRESETS).join(', ')}.`);
     const v = videoRulesOf(b);
     for (const [k, [lo, hi]] of Object.entries(VIDEO_RANGE)) if (b.videoRules[k] !== undefined && !(typeof v[k] === 'number' && v[k] >= lo && v[k] <= hi)) errors.push(`videoRules.${k}: ${lo} sampai ${hi}.`);
-    for (const k of ['brandBar', 'captions', 'noExclamation', 'noEmDash', 'requireDisclaimer']) if (b.videoRules[k] !== undefined && typeof b.videoRules[k] !== 'boolean') errors.push(`videoRules.${k} harus true atau false.`);
+    for (const k of ['headerBrand', 'captions', 'noExclamation', 'noEmDash', 'requireDisclaimer']) if (b.videoRules[k] !== undefined && typeof b.videoRules[k] !== 'boolean') errors.push(`videoRules.${k} harus true atau false.`);
     if (b.videoRules.bannedPhrases !== undefined && (!Array.isArray(b.videoRules.bannedPhrases) || b.videoRules.bannedPhrases.some(x => typeof x !== 'string'))) errors.push('videoRules.bannedPhrases harus daftar frasa.');
+    if (b.videoRules.rightSteps !== undefined && (!Array.isArray(v.rightSteps) || v.rightSteps.some((st, k) => !Array.isArray(st) || st.length !== 2 || !st.every(Number.isFinite) || st[0] < v.safeTop || st[0] > 1920 || st[1] < 0 || st[1] > 500 || (k && st[0] <= v.rightSteps[k - 1][0])))) errors.push('videoRules.rightSteps: daftar [mulai y, margin kanan] dengan y naik, misalnya [[360, 240], [840, 300]].');
     if (!errors.some(e => e.startsWith('videoRules.'))) {
       const z = videoZones(v);
-      if (z.content.h < 860) errors.push(`Zona konten video hanya ${z.content.h} px tinggi (safeTop, safeBottom, dan brandBar). Minimal 860 px supaya tata letak adegan muat.`);
-      if (z.content.w < 820) errors.push(`Zona konten video hanya ${z.content.w} px lebar (safeSide dan railWidth). Minimal 820 px.`);
-      if (v.captionTop < z.bottom + 12) errors.push(`videoRules.captionTop ${v.captionTop} menimpa zona konten (berakhir di ${z.bottom}). Minimal ${z.bottom + 12}.`);
-      if (v.captionBottom - v.captionTop < 140) errors.push('Pita subtitle (captionTop sampai captionBottom) minimal 140 px untuk dua baris.');
+      if (z.content.h < 560) errors.push(`Zona konten video hanya ${z.content.h} px tinggi (safeTop sampai captionTop). Minimal 560 px.`);
+      if (z.content.w < 560) errors.push(`Zona konten video hanya ${z.content.w} px lebar (safeLeft dan margin kanan). Minimal 560 px.`);
+      if (v.captionBottom > z.bottom) errors.push(`videoRules.captionBottom ${v.captionBottom} keluar zona aman (berakhir di ${z.bottom}).`);
+      if (v.captionBottom - v.captionTop < 130) errors.push('Pita subtitle (captionTop sampai captionBottom) minimal 130 px untuk dua baris.');
       if (v.maxSeconds > v.hardMaxSeconds) errors.push('videoRules.maxSeconds tidak boleh lebih dari hardMaxSeconds.');
-      if (v.safeTop < 269 || v.safeBottom < 672 || v.safeSide < 65) warnings.push('Zona aman video lebih sempit dari panduan Meta (atas 14%, bawah 35%, samping 6%). Teks bisa tertutup tombol atau caption Instagram.');
     }
     if (videoRulesOf(b).requireDisclaimer && !b.disclaimer) errors.push('disclaimer wajib karena videoRules.requireDisclaimer aktif.');
   }
+  /* How the voice-over says words the TTS would read the Indonesian way: { "partofphysio": "part of physio" } */
+  if (b.pronounce !== undefined && (typeof b.pronounce !== 'object' || Array.isArray(b.pronounce) || Object.entries(b.pronounce).some(([k, x]) => typeof x !== 'string' || !k.trim() || x.length > 80))) errors.push('pronounce harus objek { "kata": "cara mengucapkannya" }.');
   if (b.structure && (!Array.isArray(b.structure) || b.structure.some(x => typeof x !== 'string'))) errors.push('structure harus daftar nama slide.');
   if (b.dos && (!Array.isArray(b.dos) || b.dos.some(p => !Array.isArray(p) || p.length !== 2))) errors.push('dos harus daftar pasangan ["lakukan", "hindari"].');
   return { errors, warnings, contrasts };

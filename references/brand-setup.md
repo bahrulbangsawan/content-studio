@@ -124,38 +124,58 @@ Zona carousel tetap di engine:
 
 ### Aturan video (`videoRules`)
 
-Zona aman bawaannya mengikuti panduan Reels dari Meta: bagian atas 14% dan bawah 35% bebas isi penting, minimal 6% di setiap sisi. Kolom tombol di kanan juga dihindari. Tata letak adegan, garis panduan zona di studio, dan pemeriksaan semuanya memakai angka ini.
+Zona aman bawaannya adalah area yang aman di dua template 9:16 sekaligus: panduan TikTok 540 x 960 (dikali dua) dan template 1080 x 1920. Dalam piksel 1080 x 1920:
 
-| Kunci | Bawaan | Batas | Arti |
-| --- | --- | --- | --- |
-| `safeTop` | 270 | 220 sampai 360 | px dari atas tanpa teks (bilah Reels) |
-| `safeBottom` | 672 | 560 sampai 760 | px dari bawah tanpa isi penting (nama, caption, audio) |
-| `safeSide` | 90 | 65 sampai 140 | px kiri; kanan memakai yang lebih besar antara ini dan kolom tombol |
-| `railWidth` | 120 | 0 sampai 200 | lebar kolom tombol suka, komentar, kirim |
-| `railTop` | 1100 | 800 sampai 1460 | tombol mulai dari tinggi ini |
-| `captionTop`, `captionBottom` | 1268, 1458 | 1150 sampai 1600 | pita subtitle dan catatan kaki penutup |
-| `brandBar` | true | | logo dan handle di atas adegan isi |
-| `minTextPx` / `minMetaPx` | 40 / 30 | 36 sampai 64 / 26 sampai 40 | huruf terkecil untuk isi / untuk sumber dan disclaimer |
-| `captionChars` | 24 | 16 sampai 32 | karakter per baris subtitle |
-| `captions` | true | | subtitle tertanam |
-| `maxWordsPerSecond` | 3,2 | 2,4 sampai 4 | voice over lebih cepat dari ini diperingatkan |
-| `hookMaxSeconds` | 5 | 2 sampai 8 | panjang pembuka |
-| `maxSceneSeconds` | 14 | 6 sampai 20 | panjang satu adegan |
-| `minSeconds` / `maxSeconds` | 15 / 90 | | durasi yang disarankan |
-| `hardMaxSeconds` | 180 | 30 sampai 900 | build berhenti di atas ini |
-| `noExclamation`, `noEmDash`, `bannedPhrases`, `requireDisclaimer` | dari `rules` | | aturan tulisan khusus video, bila berbeda dari carousel |
+- **Header** y 0 sampai 252. Berisi logo dan handle, di luar zona aman.
+- **Kiri** 120 px.
+- **Kanan** 120 px, lalu 240 px mulai y 360 dan 300 px mulai y 840 untuk kolom tombol.
+- **Bawah** dari y 1216 (704 px). Berisi nama, caption, audio, dan tombol.
+- **Subtitle** di kaki zona aman, y 1060 sampai 1216.
 
-Batas tambahan dari `check`:
+Adegan dirancang 800 px lalu diperkecil agar pas dengan lebar zona aman, jadi semua tata letak tetap proporsional. Tata letak, garis panduan zona di studio, dan pemeriksaan semuanya memakai angka ini.
 
-- Zona konten video minimal 860 px tinggi dan 820 px lebar.
-- Pita subtitle tidak boleh menimpa zona konten.
-- Zona yang lebih sempit dari panduan Meta diberi peringatan.
+| Kunci | Bawaan | Arti |
+| --- | --- | --- |
+| `preset` | (gabungan) | `tiktok-540` (gambar TikTok saja) atau `template-1080` (template 1080 x 1920 saja), sebagai titik awal |
+| `safeTop` | 252 | header di atas zona aman (120 sampai 400) |
+| `safeBottom` | 704 | px dari bawah tanpa isi (300 sampai 800) |
+| `safeLeft`, `safeRight` | 120, 120 | margin kiri, dan kanan di bagian atas (40 sampai 200) |
+| `rightSteps` | [[360, 240], [840, 300]] | margin kanan yang melebar ke bawah: [mulai y, margin] |
+| `captionTop`, `captionBottom` | 1060, 1216 | pita subtitle, di dalam zona aman |
+| `headerBrand` | true | logo dan handle di header setiap adegan |
+| `minTextPx` / `minMetaPx` | 32 / 26 | huruf terkecil seperti tampil di video: isi / sumber dan disclaimer |
+| `captionChars` | 22 | karakter per baris subtitle |
+| `captions` | true | subtitle tertanam |
+| `maxWordsPerSecond` | 4 | voice over lebih cepat dari ini diperingatkan |
+| `hookMaxSeconds` | 5 | panjang pembuka |
+| `maxSceneSeconds` | 14 | panjang satu adegan |
+| `minSeconds` / `maxSeconds` | 15 / 90 | durasi yang disarankan |
+| `hardMaxSeconds` | 180 | build berhenti di atas ini |
+| `noExclamation`, `noEmDash`, `bannedPhrases`, `requireDisclaimer` | dari `rules` | aturan tulisan khusus video, bila berbeda dari carousel |
 
-Contoh akun yang ingin video lebih pendek dan tanpa bilah akun:
+`check` juga memeriksa batas-batas ini:
+
+- Zona isi minimal 560 x 560 px.
+- Subtitle berada di dalam zona aman.
+- `rightSteps` berurutan dari atas ke bawah.
+
+Contoh, memakai template 1080 x 1920 saja dan durasi lebih pendek:
 
 ```json
-"videoRules": { "maxSeconds": 60, "hookMaxSeconds": 4, "brandBar": false }
+"videoRules": { "preset": "template-1080", "maxSeconds": 60 }
 ```
+
+### Pelafalan voice over (`pronounce`)
+
+Kata atau nama bahasa Inggris yang dibaca dengan lafal Indonesia oleh suara TTS bisa diberi cara ucap:
+
+```json
+"pronounce": { "partofphysio": "part of physio" }
+```
+
+- Suara membaca tulisan pengganti itu; subtitle tetap menampilkan tulisan aslinya.
+- Gaya bicara bawaan juga meminta lafal Inggris asli untuk kata dan nama bahasa Inggris.
+- Daftar khusus satu reel ditulis di `voice.pronounce` di reel.json.
 
 ## Mengubah akun yang sudah ada
 

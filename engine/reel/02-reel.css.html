@@ -1,16 +1,15 @@
 <style id="reelCss">
 /* ================= Reels 1080 x 1920 (warna dari akun, tidak ikut tema studio) =================
-   Zona aman video datang dari videoRules akun lewat variabel di .rf (zoneCss di reel-render.mjs), bawaannya:
-   atas 0-270 dan bawah 1248-1920 tanpa isi penting (Meta: 14% dan 35%), kiri 90, kanan 132 (tombol Instagram x 960+ dari y 1100).
-   Konten mulai di bawah bilah akun (270 + 64); adegan pertama dan terakhir mulai di 270. Subtitle di y 1268-1458.
-   Hanya token warna akun (--s-*, --l-*). Teks tidak pernah langsung di atas footage: selalu di kartu padat. */
-.rf { --safe-top: 270px; --content-bottom: 1248px; --side: 90px; --side-r: 132px; --bar: 64px; --rail-w: 120px; --rail-top: 1100px; --cap-top: 1268px; --cap-h: 190px; }
+   Zona aman video datang dari videoRules akun lewat variabel di .rf (zoneCss di reel-render.mjs). Bawaannya aman
+   untuk dua template 9:16: header y 0-252 (logo dan handle), kiri 120, kanan 120 lalu 240 dari y 360 dan 300 dari
+   y 840 (kolom tombol), bawah dari y 1216. Adegan dirancang 800 px lalu diperkecil (--zoom) ke lebar zona aman.
+   Subtitle di kaki zona aman. Hanya token warna akun (--s-*, --l-*). Teks tidak pernah langsung di atas footage. */
+.rf { --cz-x: 120px; --cz-y: 252px; --cz-h: 792px; --zoom: 0.825; --cl-h: 964px; --cl-zoom: 0.825; --cap-x: 120px; --cap-y: 1060px; --cap-w: 660px; --cap-h: 156px; --hdr-h: 252px; --safe-l: 120px; }
 .rf { position: absolute; top: 0; left: 0; width: 1080px; height: 1920px; overflow: hidden; transform-origin: 0 0; transform: scale(var(--k, 0.3)); font-family: var(--font); background: var(--s-bg, #000); isolation: isolate; }
 .scene { position: absolute; inset: 0; overflow: hidden; background: var(--s-bg); color: var(--s-ink); }
 .scene[hidden] { display: none; }
 .scene * { box-sizing: border-box; }
-.cz { position: absolute; left: var(--side); right: var(--side-r); top: calc(var(--safe-top) + var(--bar)); height: calc(var(--content-bottom) - var(--safe-top) - var(--bar)); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 36px; overflow-wrap: anywhere; }
-.cz-full { top: var(--safe-top); height: calc(var(--content-bottom) - var(--safe-top)); }
+.cz { position: absolute; left: var(--cz-x); top: var(--cz-y); width: 800px; height: calc(var(--cz-h) / var(--zoom)); transform: scale(var(--zoom)); transform-origin: 0 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 36px; overflow-wrap: anywhere; }
 .cz > * { flex: none; max-width: 100%; }
 .cz p, .cz h1, .cz h2, .cz blockquote, .cz ul, .cz ol { margin: 0; }
 .cz ul, .cz ol { padding: 0; list-style: none; }
@@ -100,7 +99,7 @@
 .r-hook.v-bold { gap: 40px; }
 .r-hook.v-myth { gap: 24px; }
 .r-hook.v-myth .r-stamp { font-size: 64px; line-height: 76px; }
-.r-hook.v-myth > .r-ill-m { min-height: 140px; }
+.r-hook.v-myth > .r-ill-m { min-height: 110px; }
 .r-hook.v-split .md-top { flex: 1 1 auto !important; height: auto; min-height: 440px; max-height: 700px; }
 .r-hook.v-bold .r-corner { position: static; align-self: flex-start; order: -1; width: 300px; height: 300px; }
 .r-stamp { display: inline-block; margin-top: -12px; padding: 6px 34px; border: 7px solid var(--s-sun); border-radius: 18px; color: var(--s-sun); font-size: 72px; line-height: 84px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; transform: rotate(-6deg); }
@@ -108,8 +107,9 @@
 /* ---------- Penjelasan ---------- */
 .r-st.v-plain .r-body { max-width: 820px; }
 .r-st.v-card { justify-content: center; }
-.r-card-ill { position: relative; width: 100%; display: flex; flex-direction: column; gap: 24px; padding-top: 190px; margin-top: 140px; }
-.r-onedge { position: absolute; top: -150px; left: 56px; width: 320px !important; height: 320px !important; }
+.r-card-ill { position: relative; width: 100%; display: flex; flex-direction: column; gap: 22px; padding-top: 160px; margin-top: 120px; }
+.r-onedge { position: absolute; top: -120px; left: 56px; width: 260px !important; height: 260px !important; }
+.r-card-ill .r-h3 { font-size: 60px; line-height: 70px; }
 .r-qrow { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
 .r-qrow > .r-ill { width: 200px; height: 200px; }
 .r-st.v-quote .r-qm { font-size: 240px; line-height: 150px; font-weight: 700; color: var(--s-sun); height: 150px; overflow: visible; }
@@ -193,8 +193,8 @@
 
 
 /* ---------- Bandingkan ---------- */
-.r-cmpz { gap: 28px; }
-.r-pair { display: flex; flex-direction: column; gap: 14px; width: 100%; align-items: center; }
+.r-cmpz { gap: 22px; }
+.r-pair { display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: center; }
 .r-cmp { position: relative; width: 100%; display: grid; grid-template-columns: 88px 1fr; column-gap: 32px; row-gap: 6px; padding: 34px 44px; }
 .r-cmp .r-badge { grid-row: 1 / span 2; }
 .r-cmp-l { font-size: 40px; line-height: 48px; font-weight: 600; color: var(--l-muted); padding-top: 4px; }
@@ -207,7 +207,7 @@
 .r-cmpz.v-cols .r-cmp { display: flex; flex-direction: column; gap: 20px; padding: 40px 36px; min-height: 0; }
 .r-cmpz.v-cols .r-cmp:has(.r-cmp-ill) { padding-right: 36px; }
 .r-cmpz.v-cols .r-cmp-ill { position: static; margin: auto 0 0; align-self: center; }
-.r-cmpz.v-cols .r-cmp-t { font-size: 46px; line-height: 58px; }
+.r-cmpz.v-cols .r-cmp-t { font-size: 40px; line-height: 52px; }
 .c-yes { box-shadow: inset 0 0 0 4px var(--l-joint); }
 
 /* ---------- Mitos dan fakta ---------- */
@@ -287,7 +287,7 @@
 
 /* ---------- Penutup ---------- */
 .r-close { align-items: center; text-align: center; gap: 24px; }
-.cz-close { top: var(--safe-top); height: calc(var(--cap-top) + var(--cap-h) - var(--safe-top)); }
+.cz-close { height: calc(var(--cl-h) / var(--cl-zoom)); transform: scale(var(--cl-zoom)); }
 .r-close-main { flex: 1 1 auto !important; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; }
 .r-close-main > .r-ill-l { flex: 0 1 auto; width: auto; height: auto; min-height: 220px; max-height: 420px; aspect-ratio: 1; }
 .r-lockup { display: flex; flex-direction: column; align-items: center; gap: 28px; }
@@ -296,18 +296,19 @@
 .r-cta { height: 96px; padding: 0 44px 0 36px; font-size: 44px; }
 .r-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .r-disc { font-size: 32px; line-height: 42px; color: var(--s-muted); max-width: 780px; }
-.r-refs { font-size: 30px; line-height: 40px; color: var(--s-muted); max-width: 800px; }
+.r-refs { font-size: 32px; line-height: 42px; color: var(--s-muted); max-width: 800px; }
 .r-refs b { font-weight: 700; margin-right: 8px; }
 .r-handle { font-size: 40px; line-height: 48px; font-weight: 600; }
 
 /* ---------- Lapisan di atas adegan: bilah akun dan subtitle ---------- */
 .ov { position: absolute; inset: 0; z-index: 10; pointer-events: none; background: transparent !important; }
-.chrome { position: absolute; left: var(--side); right: var(--side-r); top: var(--safe-top); height: 52px; display: flex; align-items: center; justify-content: space-between; color: var(--s-ink); }
-.chrome .logo-img svg { display: block; height: 44px; width: auto; max-width: 160px; }
-.chrome-l { display: flex; align-items: center; gap: 14px; font-size: 32px; line-height: 40px; font-weight: 600; }
-.chrome-n { font-size: 32px; line-height: 40px; font-weight: 600; color: var(--s-muted); font-variant-numeric: tabular-nums; }
-.cap { position: absolute; left: calc(var(--rail-w) + 28px); right: calc(var(--rail-w) + 28px); top: var(--cap-top); height: var(--cap-h); display: flex; align-items: center; justify-content: center; text-align: center; }
-.cap-l { margin: 0; font-size: 58px; line-height: 92px; font-weight: 700; color: var(--l-ink); text-wrap: balance; }
+/* Header: logo and handle above the safe zone, on every scene */
+.hdr { position: absolute; left: var(--safe-l); top: calc(var(--hdr-h) * 0.5 - 4px); height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 22px 0 0; border-radius: 30px; color: var(--s-ink); font-size: 34px; line-height: 40px; font-weight: 600; }
+.hdr .logo-img svg { display: block; height: 48px; width: auto; max-width: 180px; }
+.hdr.on-media { padding: 0 24px 0 12px; background: var(--l-card); color: var(--l-ink); }
+.hdr.on-media .lg-d { display: none !important; } .hdr.on-media .lg-l { display: flex !important; }
+.cap { position: absolute; left: var(--cap-x); width: var(--cap-w); top: var(--cap-y); height: var(--cap-h); display: flex; align-items: center; justify-content: center; text-align: center; }
+.cap-l { margin: 0; font-size: 50px; line-height: 74px; font-weight: 700; color: var(--l-ink); text-wrap: balance; }
 .cap-in { padding: 10px 22px; border-radius: 20px; background: var(--l-card); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .cap-in .cw.is-now { padding: 2px 8px; margin: 0 -8px; border-radius: 12px; background: var(--s-sun); color: var(--s-face); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 

@@ -143,7 +143,7 @@ export const SCENES = {
       const v = s.variant || 'question', t0 = ctx.clk.t0;
       if (v === 'number') {
         const tv = t0 + 0.05;
-        return `<div class="cz cz-full r-hook v-number">
+        return `<div class="cz r-hook v-number">
 ${ill(ctx, s.art, 'm', tv)}
 ${bigNum(s.value, tv, 1.3)}
 <h1 class="r-h2 ${fit('h2', s.title)}">${kin(ctx, s.title, { at: tv + 0.5, focus: s.focus }).html}</h1>
@@ -152,28 +152,28 @@ ${s.kicker ? `<p class="r-kick"${A('rise', ctx.clk.after(0.4))}>${esc(s.kicker)}
       if (v === 'footage') {
         const k = kin(ctx, s.title, { at: t0 + 0.3, focus: s.focus });
         return `<div class="r-bg">${md(ctx, s.media, 'md-full', 0, 'fade')}</div>
-<div class="cz cz-full r-hook v-footage"><div class="r-card r-plate"${A('up', t0 + 0.1)}>${s.kicker ? `<p class="r-kick">${esc(s.kicker)}</p>` : ''}<h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${srcChip(ctx, s, k.end)}</div></div>`;
+<div class="cz r-hook v-footage"><div class="r-card r-plate"${A('up', t0 + 0.1)}>${s.kicker ? `<p class="r-kick">${esc(s.kicker)}</p>` : ''}<h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${srcChip(ctx, s, k.end)}</div></div>`;
       }
       if (v === 'split') {
         const k = kin(ctx, s.title, { at: t0 + 0.35, focus: s.focus });
-        return `<div class="cz cz-full r-hook v-split">${md(ctx, s.media, 'md-top', t0, 'wipeUp')}
+        return `<div class="cz r-hook v-split">${md(ctx, s.media, 'md-top', t0, 'wipeUp')}
 <h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` : ''}${srcChip(ctx, s, k.end)}</div>`;
       }
       if (v === 'myth') {
         const tc = t0, k = kin(ctx, s.title, { at: t0 + 0.25, focus: s.focus || s.title, mark: 'strike' });
-        return `<div class="cz cz-full r-hook v-myth">${chip(ctx, 'help-circle', word(ctx, 'myth'), 'c-sun', tc)}
+        return `<div class="cz r-hook v-myth">${chip(ctx, 'help-circle', word(ctx, 'myth'), 'c-sun', tc)}
 <h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>
 <span class="r-stamp"${A('stamp', k.end + 0.15)}>${esc(word(ctx, 'wrong'))}</span>
 ${ill(ctx, s.art, 'm', k.end + 0.3)}${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.5)}>${esc(s.kicker)}</p>` : ''}${srcChip(ctx, s, k.end + 0.6)}</div>`;
       }
       if (v === 'bold') {
         const k = kin(ctx, s.title, { at: t0, focus: s.focus, slam: true, step: 0.16 });
-        return `<div class="cz cz-full r-hook v-bold"><h1 class="r-xl ${fit('xl', s.title)}">${k.html}</h1>
+        return `<div class="cz r-hook v-bold"><h1 class="r-xl ${fit('xl', s.title)}">${k.html}</h1>
 ${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` : ''}${ill(ctx, s.art, 'm', k.end + 0.15, 'pop', 'r-corner')}${srcChip(ctx, s, k.end + 0.3)}</div>`;
       }
       /* question */
       const k = kin(ctx, s.title, { at: t0 + 0.15, focus: s.focus });
-      return `<div class="cz cz-full r-hook v-question">${ill(ctx, s.art, 'l', t0)}
+      return `<div class="cz r-hook v-question">${ill(ctx, s.art, 'l', t0)}
 <h1 class="r-h1 ${fit('h1', s.title)}">${k.html}</h1>${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` : ''}${srcChip(ctx, s, k.end + 0.3)}</div>`;
     },
   },
@@ -455,7 +455,7 @@ ${src.short ? `<p class="r-ev-src"${A('fade', k.end + 0.3)}>${esc(String(src.cit
     render(s, ctx) {
       const t0 = ctx.clk.t0, n = s.items.length;
       const rows = s.items.map((it, k) => { const t = ctx.clk.cue(it, k, n, 0.4); return `<li class="r-li"${A('rise', t)}>${badge(ctx, 'yes', t + 0.1)}<span>${esc(it)}</span></li>`; }).join('');
-      return `<div class="cz r-recap">${ill(ctx, s.art, 'm', t0)}<h2 class="r-h2"${A('rise', t0 + 0.1)}>${esc(s.title || word(ctx, 'recap'))}</h2><ul class="r-items r-card">${rows}</ul></div>`;
+      return `<div class="cz r-recap">${ill(ctx, s.art, 'm', t0)}<h2 class="r-head ${fit('h2', s.title || word(ctx, 'recap'))}"${A('rise', t0 + 0.1)}>${esc(s.title || word(ctx, 'recap'))}</h2><ul class="r-items r-card">${rows}</ul></div>`;
     },
   },
 

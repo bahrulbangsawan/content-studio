@@ -242,11 +242,12 @@ Baca `references/reels.md` sebelum menulis `reel.json`.
 
 Reels mengikuti **aturan video** akun (`videoRules` di brand.json), terpisah dari aturan carousel (`rules`):
 
-- **Zona aman 9:16.**
-  - Bagian atas 14% bebas teks, karena tertutup bilah Reels.
-  - Bagian bawah 35% bebas isi penting, karena tertutup nama, caption, dan audio.
-  - Margin kanan lebih lebar untuk kolom tombol Instagram.
-- **Ukuran dan tempo.** Huruf minimal 40 px, voice over paling cepat 3,2 kata per detik.
+- **Zona aman 9:16.** Aman di dua template sekaligus (TikTok 540 x 960 dan template 1080 x 1920).
+  - Header 252 px berisi logo dan handle, di luar zona aman. Tidak ada nomor adegan.
+  - Kiri 120 px; kanan 120 px, lalu 240 px dari y 360 dan 300 px dari y 840 untuk kolom tombol.
+  - Bawah 704 px tanpa isi. Subtitle ada di kaki zona aman.
+  - Adegan diperkecil agar pas dengan zona itu.
+- **Ukuran dan tempo.** Huruf minimal 32 px seperti tampil di video, voice over paling cepat 4 kata per detik.
 - **Durasi.** Pembuka paling lama 5 detik, satu adegan paling lama 14 detik, total yang disarankan 15 sampai 90 detik.
 
 Tata letak, garis panduan zona di studio, dan pemeriksaan memakai angka akun itu. Bagian 12 di `references/reels.md` membandingkan keduanya. Ringkasnya:
@@ -294,7 +295,9 @@ node "${CLAUDE_SKILL_DIR}/scripts/cli.mjs" verify <slug> --frames   # opsional: 
 
 **Voice over**
 
-- `voice` membuat satu klip per kalimat. Kalimat yang tidak berubah tidak dibuat ulang.
+- Tulis naskah yang interaktif dan bersemangat: sapa penonton, tanya lalu jawab, kalimat pendek. Gaya bawaan Gemini sudah antusias, bukan seperti membacakan dongeng.
+- Istilah bahasa Inggris ditulis dan diucapkan dalam bentuk aslinya. Kata yang tetap terbaca ala Indonesia diberi cara ucap di `voice.pronounce` (reel.json) atau `pronounce` (brand.json, atas persetujuan pemilik).
+- `voice` membuat satu klip per kalimat dalam satu permintaan. Kalimat yang tidak berubah tidak dibuat ulang.
 - Bila ada key transkripsi, waktu setiap kata diukur, jadi teks layar dan subtitle mengikuti suara dengan tepat.
 - Suara dan gaya bicaranya diatur di `voice` pada reel.json. Dengar dulu dengan `content-studio voice try "<kalimat>" --voice <nama>`.
 

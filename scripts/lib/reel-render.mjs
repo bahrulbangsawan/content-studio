@@ -31,10 +31,11 @@ function overlap(onScreen, vo) {
   return b.length ? b.filter(w => a.has(w)).length / b.length : 0;
 }
 
-/** The account's video zones as CSS variables on the frame: layout, guide overlay and checks read the same numbers. */
+/** The account's video zones as CSS variables on the frame: layout, guide overlay and checks read the same numbers.
+    Scenes are laid out DESIGN_W wide and scaled into the safe zone (--zoom). */
 export function zoneCss(v) {
-  const z = videoZones(v);
-  return `.rf { --safe-top: ${z.top}px; --content-bottom: ${z.bottom}px; --side: ${z.side}px; --side-r: ${z.right}px; --bar: ${z.bar}px; --rail-w: ${v.railWidth}px; --rail-top: ${v.railTop}px; --cap-top: ${v.captionTop}px; --cap-h: ${v.captionBottom - v.captionTop}px; }`;
+  const z = videoZones(v), c = z.content, cl = z.close, cp = z.caption;
+  return `.rf { --cz-x: ${c.x}px; --cz-y: ${c.y}px; --cz-h: ${c.h}px; --zoom: ${z.zoom}; --cl-h: ${cl.h}px; --cl-zoom: ${z.closeZoom}; --cap-x: ${cp.x}px; --cap-y: ${cp.y}px; --cap-w: ${cp.w}px; --cap-h: ${cp.h}px; --hdr-h: ${z.top}px; --safe-l: ${z.left}px; }`;
 }
 
 export function renderReel(reel, ctx) {
@@ -80,7 +81,7 @@ export function renderReel(reel, ctx) {
     const name = s.name || (e.role === 'hook' ? (i === 0 ? 'Pembuka' : `Pembuka ${i + 1}`) : e.role === 'close' ? 'Penutup' : def.label);
     scenes.push({
       name, slug: slugify(name), type: s.type, label: `${def.label}${v ? ', ' + v.toLowerCase() : ''}`, theme, dur, tr, trLen: tr === 'cut' ? 0 : TRANSITION,
-      captions, chrome: vr.brandBar && e.role === 'mid' && !(s.type === 'footage' && (s.variant || 'full') === 'full'),
+      captions, bleed: (s.type === 'footage' && (s.variant || 'full') === 'full') || (s.type === 'hook' && s.variant === 'footage'),
       settle: +Math.min(dur - 0.05, end + 0.15).toFixed(2), vo, voText: spoken(s.vo || ''), caps: captionChunks(words, { maxChars: vr.captionChars }),
       tags: [s.media ? 'footage' : '', s.art ? `ilustrasi ${s.art}` : '', ...[].concat(s.source || []).map(id => `sumber ${id}`)].filter(Boolean),
       estimated: !!(s.vo && !clip),
@@ -121,17 +122,18 @@ function guide(scenes, seq, v) {
   const used = [...new Set([...seq.main, seq.closings[0]].map(i => scenes[i].tr).filter(t => t !== 'cut'))];
   const z = videoZones(v), pc = n => `${Math.round((n / 1920) * 1000) / 10}%`.replace('.', ',');
   const num = n => String(n).replace('.', ',');
+  const steps = z.steps.map(([y, r]) => `${r} px dari y ${y}`).join(', ');
   return `<div class="sec"><h3>Zona aman video (9:16)</h3><p class="note">Aturan ini khusus video. Carousel memakai zonanya sendiri: header dan footer 168 px, margin 96 px.</p><dl class="kv">${rows([
-    ['Atas', `y 0 sampai ${z.top} (${pc(z.top)}): bilah Reels dan kamera Instagram. Tanpa teks.`],
-    ['Bawah', `y ${z.bottom} sampai 1920 (${pc(1920 - z.bottom)}): nama akun, caption, audio. Tanpa isi penting; hanya subtitle dan catatan kaki penutup di pita subtitle.`],
-    ['Samping', `${z.side} px kiri, ${z.right} px kanan (kanan juga memberi ruang untuk tombol).`],
-    ['Tombol', `x ${z.rail.x} ke kanan, dari y ${z.rail.y}: suka, komentar, kirim. Tanpa teks.`],
-    ['Konten', `x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.bottom}${z.bar ? `, di bawah bilah akun (y ${z.top} sampai ${z.top + 52})` : ''}. Adegan pertama dan terakhir mulai y ${z.top}.`],
-    ['Subtitle', `y ${v.captionTop} sampai ${v.captionBottom}, x ${z.caption.x} sampai ${z.caption.x + z.caption.w}, sekitar ${v.captionChars} karakter per baris.`],
-    ['Grid profil', 'Sampul terpotong 3:4 di tengah (y 240 sampai 1680): judul pembuka ada di dalamnya.'],
-  ])}</dl><p class="note">Tombol zona di bawah video menggambar area ini di atas adegan.</p></div>
+    ['Header', `y 0 sampai ${z.top} (${pc(z.top)}): logo dan handle${v.headerBrand ? '' : ' (dimatikan)'}, di luar zona aman. Bilah atas aplikasi bisa menimpanya.`],
+    ['Bawah', `y ${z.bottom} sampai 1920 (${pc(1920 - z.bottom)}): nama akun, caption, audio, tombol. Tanpa isi.`],
+    ['Kiri', `${z.left} px.`],
+    ['Kanan', `${z.right} px di atas${steps ? `, lalu ${steps} untuk kolom tombol` : ''}.`],
+    ['Isi adegan', `x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.content.y + z.content.h}. Tata letak dirancang ${'800'} px lalu diperkecil ${num(Math.round(z.zoom * 100))}% agar pas.`],
+    ['Subtitle', `y ${v.captionTop} sampai ${v.captionBottom}, x ${z.caption.x} sampai ${z.caption.x + z.caption.w}, di dalam zona aman, sekitar ${v.captionChars} karakter per baris.`],
+    ['Penutup', `isi sampai y ${z.bottom}: disclaimer dan sumber memakai pita subtitle.`],
+  ])}</dl><p class="note">Tombol zona di bawah video menggambar area ini di atas adegan.${v.preset ? ` Preset: ${esc(v.preset)}.` : ''}</p></div>
 <div class="sec"><h3>Aturan video</h3><dl class="kv">${rows([
-    ['Huruf terkecil', `${v.minTextPx} px untuk isi, ${v.minMetaPx} px untuk sumber, disclaimer, dan handle.`],
+    ['Huruf terkecil', `${v.minTextPx} px untuk isi, ${v.minMetaPx} px untuk sumber dan disclaimer, seperti tampil di video.`],
     ['Kecepatan suara', `paling cepat ${num(v.maxWordsPerSecond)} kata per detik.`],
     ['Pembuka', `selesai dalam ${num(v.hookMaxSeconds)} detik.`],
     ['Per adegan', `paling lama ${num(v.maxSceneSeconds)} detik, satu ide.`],
