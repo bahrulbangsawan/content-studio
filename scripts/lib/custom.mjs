@@ -1,30 +1,40 @@
-// Loads the components written through the component gate: <skill>/components/<id>.mjs.
-// Each file default-exports one definition (see references/authoring.md). A file that fails to load is
-// left out and reported, so one broken component never stops posts that do not use it.
+// Loads the components written through the component gate, from two places: the ones shipped with the skill
+// (<skill>/components, read-only once installed as a plugin or in Claude Desktop) and the project's own
+// (<workspace>/components, where `component.mjs new` writes). Each file default-exports one definition, or a
+// function that receives the kit and returns it (see references/authoring.md); the function form works
+// wherever the skill is installed. A file that fails to load is left out and reported, so one broken
+// component never stops posts that do not use it.
 // A component may be used in a post only while its pass record (<id>.pass.json, written by
 // `component.mjs check`) matches both the file and the engine it was checked against.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { SKILL_DIR, ENGINE_DIR, sha256 } from './common.mjs';
+import { SKILL_DIR, ENGINE_DIR, sha256, parseArgs, workspace } from './common.mjs';
+import * as KIT from './kit.mjs';
 
-export const CUSTOM_DIR = join(SKILL_DIR, 'components');
+export const SHIPPED_DIR = join(SKILL_DIR, 'components');
+export const CUSTOM_DIR = join(workspace(parseArgs()), 'components');
 export const ID = /^[a-z][a-z0-9]{2,23}$/;
 
 /** Fingerprint of the locked engine a component was checked against. */
 export const engineStamp = () => sha256(readFileSync(join(ENGINE_DIR, 'LOCK.json')));
-export const fileOf = id => join(CUSTOM_DIR, `${id}.mjs`);
-export const passFileOf = id => join(CUSTOM_DIR, `${id}.pass.json`);
+const home = {};
+export const fileOf = id => join(home[id] || CUSTOM_DIR, `${id}.mjs`);
+export const passFileOf = id => join(home[id] || CUSTOM_DIR, `${id}.pass.json`);
 
 export const CUSTOM = {};
 export const CUSTOM_ISSUES = {};
 
-const files = existsSync(CUSTOM_DIR) ? readdirSync(CUSTOM_DIR).filter(f => f.endsWith('.mjs')).sort() : [];
-for (const f of files) {
+for (const dir of [...new Set([SHIPPED_DIR, CUSTOM_DIR])]) {
+ const files = existsSync(dir) ? readdirSync(dir).filter(f => f.endsWith('.mjs')).sort() : [];
+ for (const f of files) {
   const id = f.slice(0, -4);
   if (!ID.test(id)) { CUSTOM_ISSUES[id] = `Nama berkas components/${f} tidak sah: huruf kecil dan angka, 3 sampai 24 karakter, diawali huruf.`; continue; }
+  if (home[id]) { CUSTOM_ISSUES[id] = `Komponen buatan ${id} ada di folder skill dan di folder proyek. Ganti nama salah satunya.`; delete CUSTOM[id]; continue; }
+  home[id] = dir;
   try {
-    const def = (await import(pathToFileURL(fileOf(id)).href)).default;
+    const mod = (await import(pathToFileURL(fileOf(id)).href)).default;
+    const def = typeof mod === 'function' ? mod(KIT) : mod;
     if (!def || typeof def !== 'object') throw new Error('berkas tidak mengekspor definisi lewat export default');
     if (def.id !== id) throw new Error(`id "${def.id}" harus sama dengan nama berkas "${id}"`);
     if (typeof def.render !== 'function') throw new Error('render(s, ctx) wajib berupa fungsi');
@@ -33,6 +43,7 @@ for (const f of files) {
   } catch (e) {
     CUSTOM_ISSUES[id] = `Komponen buatan ${id} gagal dimuat: ${e.message}`;
   }
+ }
 }
 
 /** Whether a custom component passed the gate in its current form. */

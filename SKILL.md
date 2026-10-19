@@ -21,14 +21,15 @@ Desainnya ketat karena tujuannya konsistensi: tampilan, warna, tipografi, dan ge
 ## Peta berkas
 
 ```
-~/.claude/skills/content-studio/        SKILL (terkunci, kecuali components/)
+<folder skill>/                          SKILL (terkunci; folder ini bisa hanya-baca)
   engine/parts/   tampilan, CSS, JS studio dan ekspor, kit design system ds-*
   engine/icons.json, fonts/, vendor/      katalog ikon, font bawaan Inter, mp4-muxer
   engine/LOCK.json                         sidik jari engine dan skrip
-  scripts/        brand.mjs, new-post.mjs, ref.mjs, scan.mjs, build.mjs, verify.mjs, catalog.mjs, component.mjs, lock.mjs
-  scripts/lib/kit.mjs                      field, markup, dan nilai design system untuk komponen
-  components/     komponen buatan: <id>.mjs, <id>.pass.json (ditulis gerbang), README.md
-  tools/          requirements.txt (versi gallery-dl), .venv/ yang dipasang otomatis oleh ref.mjs
+  scripts/        brand.mjs, new-post.mjs, ref.mjs, scan.mjs, build.mjs, verify.mjs, catalog.mjs, component.mjs,
+                  workspace.mjs, package.mjs, lock.mjs
+  scripts/lib/kit.mjs, art.mjs             field, markup, nilai design system, dan katalog ilustrasi
+  components/     komponen buatan yang ikut skill (compare)
+  tools/          requirements.txt (versi gallery-dl untuk ref.mjs)
   references/     components.md, authoring.md, rules.md, brand-setup.md
   assets/examples/ akun contoh Part of Physio dan post contoh
   assets/media/   foto dan video contoh (ilustrasi pengganti) untuk katalog dan gerbang
@@ -36,12 +37,27 @@ Desainnya ketat karena tujuannya konsistensi: tampilan, warna, tipografi, dan ge
 <project>/content-studio/               WORKSPACE (milik pengguna)
   brands/<akun>/  brand.json, logo-light.svg, logo-dark.svg, font.woff2, brand.lock
   posts/<slug>/   post.json, media/ (foto dan video akun), <slug>.html, preview/slide-N.png, cover-N.png, closing-N.png
+  components/     komponen buatan proyek ini: <id>.mjs, <id>.pass.json (ditulis gerbang), README.md
   refs/<kode>/    ref.json, caption.txt, media/, frames/ (bahan dari link Instagram)
-  catalog/<akun>.html  katalog semua komponen, varian, dan preset gerak dalam warna akun
+  catalog/<akun>.html  katalog semua komponen, varian, ilustrasi, dan preset gerak dalam warna akun
   checks/<id>/    lembar uji gerbang komponen (PNG per varian)
+
+~/.content-studio/gallery-dl/            gallery-dl untuk ref.mjs, dipasang otomatis saat pertama dipakai
 ```
 
-Semua skrip memakai `./content-studio` di direktori kerja sebagai workspace (proyek lama yang masih punya `./carousel-studio` tetap terbaca). Pakai `--root <folder>` bila pengguna menyimpannya di tempat lain. Jalankan skrip dengan `node ~/.claude/skills/content-studio/scripts/<nama>.mjs`. Butuh Node 18 atau lebih baru.
+Perintah di skill ini memakai path folder skill (folder tempat SKILL.md ini berada), yang diisi otomatis oleh Claude Code di mana pun skill dipasang: folder pribadi, folder proyek, atau plugin. Bila sebuah perintah masih memuat nama variabel CLAUDE_SKILL_DIR yang belum terganti, misalnya di Claude Desktop, ganti dengan path folder yang berisi SKILL.md ini. Jangan menyimpan apa pun di folder skill: folder itu bisa hanya-baca dan tertimpa saat skill diperbarui. Semua yang ditulis masuk ke workspace.
+
+Semua skrip memakai `./content-studio` di direktori kerja sebagai workspace (proyek lama yang masih punya `./carousel-studio` tetap terbaca). Pakai `--root <folder>` bila pengguna menyimpannya di tempat lain. Jalankan skrip dengan `node "${CLAUDE_SKILL_DIR}/scripts/<nama>.mjs"`. Butuh Node 18 atau lebih baru; verifikasi butuh Chrome, Chromium, atau Edge.
+
+### Di Claude Desktop dan claude.ai
+
+Skill ini juga berjalan sebagai skill unggahan di Claude Desktop dan claude.ai, di lingkungan code execution. Bedanya:
+
+- Berkas tidak tersimpan antar percakapan. Di awal, minta pengguna mengunggah `content-studio-workspace.zip` miliknya, lalu buka dengan `node "${CLAUDE_SKILL_DIR}/scripts/workspace.mjs" unpack <berkas.zip>`. Kalau belum punya, siapkan akun seperti biasa (langkah 1). Di akhir, buat ulang zip-nya dengan `workspace.mjs pack` dan berikan ke pengguna untuk disimpan.
+- Halaman studio adalah satu berkas `.html` yang dibuka di browser pengguna. Setelah build, salin `posts/<slug>/<slug>.html` (dan PNG pratinjau bila perlu) ke folder unduhan percakapan, misalnya `/mnt/user-data/outputs/` bila folder itu ada, supaya pengguna bisa mengunduhnya.
+- Bila Chrome tidak ada, `verify.mjs` keluar dengan kode 2. Jalankan `npx playwright install chromium` bila jaringan mengizinkan, lalu ulangi; kalau tidak bisa, minta pengguna membuka halaman dan melihat tab Pengaturan, bagian Pemeriksaan.
+- `ref.mjs` (bahan dari link Instagram) butuh jaringan dan Python; di sana sering tidak tersedia. Minta screenshot atau ringkasan postingannya.
+- Foto dan video dari pengguna ada di berkas unggahan percakapan; salin ke `posts/<slug>/media/`.
 
 ## Batas sentuh
 
@@ -55,9 +71,9 @@ Batas ini ada supaya setiap postingan dari akun yang sama terlihat seperti satu 
 | `brand.json`, logo, font, warna, aturan akun yang sudah ada | Hanya atas permintaan jelas pemilik | Ubah lewat `brand.mjs`, tunjukkan perubahannya, jalankan `accept` hanya setelah pemilik setuju |
 | Batas aturan (`maxWordsPerSlide`, `titleMax`, dan lainnya) agar scan lolos | Tidak | Persingkat teksnya. Aturan dilonggarkan hanya bila pemilik akun meminta |
 | `<slug>.html` hasil build | Tidak | Ubah `post.json`, lalu build ulang. Halaman akan tertimpa |
-| `components/<id>.mjs`: komponen buatan | Ya, bila tidak ada komponen yang cocok | Ikuti `references/authoring.md`. Komponen baru dipakai hanya setelah lolos `component.mjs check` |
-| `components/<id>.pass.json` dan `README.md` | Tidak | Ditulis gerbang saat komponen lolos. Jangan dibuat atau diedit sendiri |
-| Folder skill lainnya: engine, CSS inti, skrip, ikon, font, LOCK.json | Tidak | Komponen baru ditulis di `components/`, bukan di engine. Kalau perlu fitur engine, jelaskan ke pengguna. `lock.mjs` hanya untuk pemilik skill saat memperbarui engine |
+| `content-studio/components/<id>.mjs`: komponen buatan proyek | Ya, bila tidak ada komponen yang cocok | Ikuti `references/authoring.md`. Komponen baru dipakai hanya setelah lolos `component.mjs check` |
+| `content-studio/components/<id>.pass.json` dan `README.md` | Tidak | Ditulis gerbang saat komponen lolos. Jangan dibuat atau diedit sendiri |
+| Folder skill lainnya: engine, CSS inti, skrip, ikon, font, LOCK.json | Tidak | Komponen baru ditulis di `content-studio/components/` (workspace), bukan di engine. Kalau perlu fitur engine, jelaskan ke pengguna. `lock.mjs` hanya untuk pemilik skill saat memperbarui engine |
 | Gaya di post.json (`style`, `color`, `fontSize`, posisi, HTML) | Tidak ada tempatnya | Scan menolak kunci yang tidak dikenal |
 | `refs/<kode>/` hasil `ref.mjs` | Baca saja | Pelajari struktur dan idenya, lalu tulis isi baru. Teks dan gambar postingan orang tidak disalin ke slide |
 
@@ -68,7 +84,7 @@ Batas ini ada supaya setiap postingan dari akun yang sama terlihat seperti satu 
 ### 1. Pastikan akunnya ada
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/brand.mjs list
+node "${CLAUDE_SKILL_DIR}/scripts/brand.mjs" list
 ```
 
 Kalau belum ada akun untuk brand ini, siapkan bersama pemiliknya. Baca `references/brand-setup.md` untuk daftar pertanyaan, format berkas jawaban, nilai bawaan, dan aturan kontras. Jangan menebak logo, warna, handle, atau disclaimer. Itu identitas orang lain dan hanya mereka yang tahu nilainya. Kalau pengguna ingin mencoba dengan akun contoh, salin `assets/examples/partofphysio/` dan jalankan init dari `answers.json` di sana.
@@ -77,22 +93,22 @@ Status di `list`: **disetujui** (siap dipakai), **belum disetujui** (init belum 
 
 ### 2. Buat atau buka postingannya
 
-Kalau pengguna memberi link Instagram sebagai contoh, ambil bahannya dulu. gallery-dl terpasang otomatis di `tools/.venv` saat pertama dipakai.
+Kalau pengguna memberi link Instagram sebagai contoh, ambil bahannya dulu. gallery-dl terpasang otomatis di `~/.content-studio/gallery-dl` saat pertama dipakai.
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/ref.mjs <link>
+node "${CLAUDE_SKILL_DIR}/scripts/ref.mjs" <link>
 ```
 
 Hasilnya ada di `refs/<kode>/`: `ref.json` (caption, urutan, ukuran, durasi), gambar dan video asli di `media/`, dan untuk setiap video, frame berjarak rata plus satu lembar ringkas `frames/<n>-sheet.jpg`. Lihat semua gambar dan lembar frame dengan alat baca gambar, baca `caption.txt`, lalu catat pertanyaan yang dijawab postingan itu, urutan idenya, dan bentuk tiap slide. Audio video tidak ditranskrip; kalau isinya ada di suara, minta pengguna merangkumnya. Setelah itu buat postingan baru dan tulis isinya dengan suara akun.
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/new-post.mjs --brand <akun> --slug <slug> --title "<judul postingan>" [--slides <3-10>]
+node "${CLAUDE_SKILL_DIR}/scripts/new-post.mjs" --brand <akun> --slug <slug> --title "<judul postingan>" [--slides <3-10>]
 ```
 
 Berkas yang dibuat berisi `TODO` di setiap teks, tema yang berselang-seling, nama slide dari `structure` akun bila ada, empat alternatif cover, dan tiga alternatif penutup. `--slides` mengatur jumlah slide. Isi `post.json`:
 
 - Mulai dari satu pertanyaan yang dicari pembaca. Satu ide per slide.
-- Pilih komponen yang cocok dengan bentuk isinya, bukan untuk variasi: urutan sebab akibat memakai `steps` atau `numbered`, label lawan kalimat memakai `pairs`, kalimat yang bisa diucapkan memakai `quotes`, dua kalimat yang mirip tapi beda pesan memakai `versus`, dan seterusnya. Tabel "Memilih komponen" di `references/components.md` memetakan 56 komponen inti ke bentuk isinya; komponen buatan yang sudah ada tercantum di `components/README.md` dan dipakai ulang dengan cara yang sama.
+- Pilih komponen yang cocok dengan bentuk isinya, bukan untuk variasi: urutan sebab akibat memakai `steps` atau `numbered`, label lawan kalimat memakai `pairs`, kalimat yang bisa diucapkan memakai `quotes`, dua kalimat yang mirip tapi beda pesan memakai `versus`, dan seterusnya. Tabel "Memilih komponen" di `references/components.md` memetakan 56 komponen inti ke bentuk isinya; komponen buatan yang sudah ada tercantum di `components/README.md` (folder skill dan workspace) dan dipakai ulang dengan cara yang sama.
 - Variasi datang dari isi, varian, dan gerak, bukan dari dekorasi. Hindari komponen yang sama di dua slide berurutan, kecuali seri yang memang satu bentuk (misalnya satu slide per tahap): di situ tata letak yang sama membantu pembaca melihat kemajuan, dan variasi datang dari tema dan gerak. Pilih `variant` yang paling pas dengan isinya. Setiap komponen sudah punya gerak bawaan yang berbeda; isi `motion` hanya bila ingin ritme lain, dan jangan memakai preset yang sama di lebih dari tiga slide.
 - Slide pertama selalu komponen pembuka (`cover`, `hero`, `hook`, `stat`, `photo`, `teaser`, atau `contrast`), slide terakhir komponen penutup (`closing`, `outro`, `recap`, `prompt`, `action`, atau `profile`). Disclaimer dan handle diisi otomatis dari akun.
 - Cover adalah hook: ia menentukan apakah orang berhenti menggulir. Tulis slide pertama terbaikmu di `slides`, lalu 3 sampai 14 alternatif di `covers` (lebih banyak lebih baik, selama jenis hook-nya berbeda), masing-masing dari jenis hook yang berbeda (pertanyaan pembaca, koreksi anggapan, frasa kunci, tanda yang dikenali, kalimat yang sering terdengar, angka bersumber, kuis, skala, daftar isi, pencarian, balik anggapan, foto adegan, dan seterusnya; lihat "Cover: hook pertama" di `references/components.md`). Semua alternatif harus benar terhadap isi postingan. Pemilik memilih salah satunya di studio, dan unduhan memakai yang dipilih. New-post sudah menyiapkan empat alternatif; ganti jenisnya bila ada yang lebih cocok dengan topik.
@@ -107,7 +123,7 @@ Berkas yang dibuat berisi `TODO` di setiap teks, tema yang berselang-seling, nam
 Rincian field, batas kata dan karakter, serta daftar ikon ada di `references/components.md`; komponen buatan ada di `components/README.md`, dan `component.mjs list` mencetak semuanya. Untuk melihat semua komponen, varian, dan preset gerak dalam warna, logo, dan font akun, buat katalognya:
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/catalog.mjs --brand <akun>
+node "${CLAUDE_SKILL_DIR}/scripts/catalog.mjs" --brand <akun>
 ```
 
 Hasilnya `catalog/<akun>.html`, satu halaman lokal berisi setiap tata letak dalam tema terang dan gelap, contoh `post.json`-nya, dan tombol untuk memutar gerak masuk. Contoh isinya lolos scan yang sama dengan post. Buat ulang setelah engine, akun, atau komponen buatan berubah.
@@ -117,8 +133,8 @@ Hasilnya `catalog/<akun>.html`, satu halaman lokal berisi setiap tata letak dala
 Turuni tangga ini dan berhenti di anak tangga pertama yang cukup: komponen yang ada, varian lain, gerak lain, ubah bentuk isinya (persingkat atau pecah ke dua slide), baru komponen baru. Komponen baru dibuat untuk bentuk isi yang belum ada, misalnya tiga pilihan yang dibandingkan pada aspek yang sama, bukan untuk variasi atau hiasan.
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/component.mjs new --id <id>
-node ~/.claude/skills/content-studio/scripts/component.mjs check --id <id>
+node "${CLAUDE_SKILL_DIR}/scripts/component.mjs" new --id <id>
+node "${CLAUDE_SKILL_DIR}/scripts/component.mjs" check --id <id>
 ```
 
 Baca `references/authoring.md` sebelum menulis berkasnya. Gerbangnya memeriksa tiga hal:
@@ -132,7 +148,7 @@ Ulangi `check` sampai lolos, lalu lihat sendiri `checks/<id>/lembar-*.png`. Gala
 ### 3. Scan aturan
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/scan.mjs --slug <slug>
+node "${CLAUDE_SKILL_DIR}/scripts/scan.mjs" --slug <slug>
 ```
 
 Perbaiki setiap galat dengan mengubah isi. Tambahkan `--detail` untuk melihat jumlah kata dan karakter setiap field terhadap batasnya. Penjelasan tiap aturan dan cara memperbaikinya ada di `references/rules.md`. Peringatan boleh dibiarkan bila disengaja; sebutkan ke pengguna.
@@ -140,7 +156,7 @@ Perbaiki setiap galat dengan mengubah isi. Tambahkan `--detail` untuk melihat ju
 ### 4. Build
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/build.mjs --slug <slug>
+node "${CLAUDE_SKILL_DIR}/scripts/build.mjs" --slug <slug>
 ```
 
 Hasilnya `posts/<slug>/<slug>.html`, sekitar 300 KB ditambah ukuran foto dan video, dengan font, media, dan pustaka video tersemat sehingga bisa dibuka tanpa internet.
@@ -148,7 +164,7 @@ Hasilnya `posts/<slug>/<slug>.html`, sekitar 300 KB ditambah ukuran foto dan vid
 ### 5. Verifikasi di browser
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/verify.mjs --slug <slug>
+node "${CLAUDE_SKILL_DIR}/scripts/verify.mjs" --slug <slug>
 ```
 
 Skrip ini membuka halaman di Chrome tanpa layar, membaca pemeriksaan di halaman, memeriksa kata yang terpotong di tengah (gagal) dan kata yang sendirian di baris terakhir (peringatan), lalu menyimpan `preview/slide-N.png`. Setiap alternatif cover dipasang ke slide 1 satu per satu, diperiksa dengan aturan yang sama, dan disimpan sebagai `preview/cover-N.png`; alternatif penutup dipasang ke slide terakhir dan disimpan sebagai `preview/closing-N.png`. Video difoto di detik `still`-nya. Prosesnya beberapa detik. Jumlah kata di sini bisa sampai lima lebih tinggi dari scan karena angka yang terlihat di slide (nomor langkah dan nomor butir) ikut terhitung. Lihat beberapa PNG itu dengan alat baca gambar untuk memastikan tidak ada teks yang terpotong atau terlalu padat. Kalau ada pemeriksaan gagal, persingkat teks di slide itu, lalu ulangi langkah 3 sampai 5. Kalau Chrome tidak ada (kode keluar 2), katakan ke pengguna dan minta mereka membuka halaman lalu melihat tab Pengaturan, bagian Pemeriksaan.
@@ -184,7 +200,7 @@ Beri tahu pengguna, singkat:
 
 - `references/components.md`: 56 komponen inti beserta varian, field, batas, contoh JSON, foto dan video, jenis hook cover dan alternatif cover, jenis ajakan penutup dan alternatif penutup, aturan gaya, 20 preset gerak, dan daftar ikon. Baca sebelum menulis `post.json`.
 - `references/authoring.md`: membuat komponen baru. Tangga pakai ulang, anatomi berkas, field, design system dan kit `ds-*`, aturan tanpa pola AI, aturan kerapian beserta angkanya, dan cara membaca hasil gerbang. Baca sebelum menulis `components/<id>.mjs`.
-- `components/README.md` (folder skill): komponen buatan yang sudah lolos, beserta field dan contohnya.
+- `components/README.md` (di folder skill dan di `content-studio/components/`): komponen buatan yang sudah lolos, beserta field dan contohnya.
 - `references/rules.md`: semua aturan scan dan pemeriksaan browser, beserta cara memperbaikinya.
 - `references/brand-setup.md`: pertanyaan untuk pemilik akun, format berkas jawaban, aturan kontras, cara mengubah akun.
 - `assets/examples/gerak-anak.post.json`: contoh postingan enam slide yang lolos semua pemeriksaan.

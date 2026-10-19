@@ -70,7 +70,8 @@ Tulis di `content-studio/setup/<id>.answers.json`. Path logo dan font relatif te
 Lalu jalankan:
 
 ```bash
-node ~/.claude/skills/content-studio/scripts/brand.mjs init --from content-studio/setup/<id>.answers.json
+# <skill> adalah folder skill ini (di SKILL.md ditulis ${CLAUDE_SKILL_DIR})
+node <skill>/scripts/brand.mjs init --from content-studio/setup/<id>.answers.json
 ```
 
 Skrip ini membersihkan logo (menghapus script, style, tautan eksternal, dan atribut event), menyalin berkas ke `brands/<id>/`, memeriksa semua aturan, mencetak rasio kontras, lalu mengunci akun. Tunjukkan daftar kontras dan pesan pembersihan logo ke pemilik.

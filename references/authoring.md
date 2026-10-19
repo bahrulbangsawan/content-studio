@@ -35,14 +35,16 @@ Tulis hasil pengecekan ini di `reuse` (lihat bagian 3). Gerbang menghitung kompo
 
 ## 2. Alur kerja
 
+`<skill>` adalah folder skill ini (di SKILL.md ditulis `${CLAUDE_SKILL_DIR}`).
+
 ```bash
 cd <project>                                    # workspace ./content-studio dengan akun yang sudah ada
-node ~/.claude/skills/content-studio/scripts/component.mjs list
-node ~/.claude/skills/content-studio/scripts/component.mjs new --id <id> [--role open|close]
-#   tulis ~/.claude/skills/content-studio/components/<id>.mjs
-node ~/.claude/skills/content-studio/scripts/component.mjs check --id <id>
+node <skill>/scripts/component.mjs list
+node <skill>/scripts/component.mjs new --id <id> [--role open|close]
+#   tulis content-studio/components/<id>.mjs (workspace)
+node <skill>/scripts/component.mjs check --id <id>
 #   lihat content-studio/checks/<id>/lembar*.png, perbaiki, ulangi check
-node ~/.claude/skills/content-studio/scripts/catalog.mjs --brand <akun>
+node <skill>/scripts/catalog.mjs --brand <akun>
 ```
 
 `id` berisi huruf kecil dan angka saja, 3 sampai 24 karakter, dan tidak boleh sama dengan komponen inti. `new` menulis kerangka berisi TODO; gerbang menolak selama TODO masih ada.
@@ -53,7 +55,7 @@ Setelah lolos, pakai komponennya di `post.json`, lalu scan, build, dan verify se
 
 ## 3. Anatomi berkas
 
-Satu komponen adalah satu berkas `components/<id>.mjs` di folder skill. Contoh lengkap yang lolos gerbang, `components/compare.mjs`:
+Satu komponen adalah satu berkas `content-studio/components/<id>.mjs` di workspace proyek; folder skill bisa hanya-baca dan tertimpa saat skill diperbarui. `new` menulis kerangkanya sebagai fungsi yang menerima kit (`export default kit => ({ ... })`), jadi berkas itu tidak bergantung pada letak skill. Komponen yang ikut skill, seperti `compare`, ada di `components/` folder skill dan boleh memakai `import` dari `../scripts/lib/kit.mjs`. Contoh lengkap yang lolos gerbang, `components/compare.mjs` di folder skill:
 
 ```js
 import { title, text, list, obj, variant, esc, M, note } from '../scripts/lib/kit.mjs';
@@ -331,7 +333,7 @@ Angka di bawah dipakai gerbang. Semuanya diukur di slide 1080 x 1350.
 
 Lembar uji tersimpan di `content-studio/checks/<id>/lembar-<varian>.png`: satu baris per isi uji, terang di kiri dan gelap di kanan. Kotak merah menandai galat, kotak kuning putus-putus menandai peringatan. Lihat dengan alat baca gambar.
 
-Bila semuanya lolos, gerbang menulis `components/<id>.pass.json` (sidik jari berkas komponen dan engine) dan memperbarui `components/README.md`. Catatan itu hanya ditulis oleh gerbang; jangan dibuat atau diedit sendiri. Bila berkas komponen atau engine berubah, catatannya tidak cocok lagi dan scan meminta `check` diulang.
+Bila semuanya lolos, gerbang menulis `<id>.pass.json` di sebelah berkas komponennya (sidik jari berkas komponen dan engine) dan memperbarui `README.md` di folder yang sama. Catatan itu hanya ditulis oleh gerbang; jangan dibuat atau diedit sendiri. Bila berkas komponen atau engine berubah, catatannya tidak cocok lagi dan scan meminta `check` diulang.
 
 | Pesan | Perbaiki dengan |
 | --- | --- |
@@ -364,5 +366,5 @@ Gerbang tidak bisa menilai semuanya. Lihat lembar ujinya dan tanyakan:
 
 - **Mengubah**: edit berkasnya, lalu jalankan `check` lagi. Gerbang memindai ulang postingan di workspace yang memakai komponen itu dan melaporkan yang tidak lolos lagi. Halaman yang sudah dibangun tidak berubah sampai dibangun ulang.
 - **Menambah varian atau field opsional** lebih aman daripada mengubah field yang ada, karena `post.json` lama tetap sah.
-- **Menghapus**: pastikan tidak ada postingan yang memakainya (cari `"component": "<id>"` di `posts/`), lalu hapus `components/<id>.mjs` dan `components/<id>.pass.json`, dan buat ulang katalognya.
+- **Menghapus**: pastikan tidak ada postingan yang memakainya (cari `"component": "<id>"` di `posts/`), lalu hapus `content-studio/components/<id>.mjs` dan `<id>.pass.json` di sebelahnya, dan buat ulang katalognya.
 - **Engine diperbarui**: semua komponen buatan perlu `check` ulang. Scan menyebut komponen mana saja.

@@ -1,11 +1,11 @@
 {
  "id": "compare",
  "file": "bf10d82ad1fcae0791c908f88e7f35c9667aa60e93cecae0ae776e711795a51c",
- "engine": "c8321510a791d310a10c4b01914c4a33f12e0e55231a8e8be71892e55d9d0178",
+ "engine": "91ffd390417f76dbf1a9c04b4708e52c25e02c3dd9b4ca119db943a34e5eb0d4",
  "brands": [
   "partofphysio"
  ],
  "cases": 16,
  "warnings": [],
- "checkedAt": "2026-10-19T03:48:57.752Z"
+ "checkedAt": "2026-10-19T04:00:28.936Z"
 }

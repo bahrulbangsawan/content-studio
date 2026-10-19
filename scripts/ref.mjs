@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 // Download an Instagram post (images, videos, caption) into refs/<shortcode>/ as reference material.
 // Usage: node ref.mjs <link> [--browser chrome|"chrome:Profile 1"|firefox|safari] [--cookies <cookies.txt>] [--force] [--root <workspace>]
-//        node ref.mjs --setup     install the pinned gallery-dl into tools/.venv
+//        node ref.mjs --setup     install the pinned gallery-dl into ~/.content-studio/gallery-dl
 //        node ref.mjs --update    upgrade gallery-dl when Instagram changes and rewrite the pin
-// gallery-dl lives in a private venv owned by the skill, pinned by tools/requirements.txt.
+// gallery-dl lives in a private venv in the user's folder (the skill folder may be read-only, e.g. a plugin),
+// pinned by tools/requirements.txt. CONTENT_STUDIO_HOME moves that folder.
 // Videos also become still frames and one contact sheet (ffmpeg), because the AI reads images, not video.
 // Exit codes: 1 error, 3 Instagram asked for a login.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, resolve, extname, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { SKILL_DIR, parseArgs, workspace, fail, countWords } from './lib/common.mjs';
 
 const TOOLS_DIR = join(SKILL_DIR, 'tools');
-const VENV = join(TOOLS_DIR, '.venv');
+const HOME_DIR = process.env.CONTENT_STUDIO_HOME || join(homedir(), '.content-studio');
+const VENV = join(HOME_DIR, 'gallery-dl');
+const VENV_LABEL = process.env.CONTENT_STUDIO_HOME ? VENV : '~/.content-studio/gallery-dl';
 const REQUIREMENTS = join(TOOLS_DIR, 'requirements.txt');
 const WIN = process.platform === 'win32';
 const venvBin = name => join(VENV, WIN ? 'Scripts' : 'bin', WIN ? `${name}.exe` : name);
@@ -37,10 +41,11 @@ export function ensureGalleryDl({ update = false } = {}) {
   if (existsSync(gdl) && !update) return gdl;
   const python = venvBin('python');
   const uv = has('uv');
-  console.log(update ? 'Memperbarui gallery-dl di tools/.venv…' : 'Memasang gallery-dl ke tools/.venv (sekali saja)…');
+  console.log(update ? `Memperbarui gallery-dl di ${VENV_LABEL}…` : `Memasang gallery-dl ke ${VENV_LABEL} (sekali saja)…`);
+  mkdirSync(HOME_DIR, { recursive: true });
   if (!existsSync(python)) {
     const r = uv ? run('uv', ['venv', '--quiet', VENV]) : run(WIN ? 'python' : 'python3', ['-m', 'venv', VENV]);
-    if (r.status !== 0) fail(`Gagal membuat tools/.venv. Butuh uv atau Python 3.\n${tail(r.stderr || r.error?.message)}`);
+    if (r.status !== 0) fail(`Gagal membuat ${VENV_LABEL}. Butuh uv atau Python 3.\n${tail(r.stderr || r.error?.message)}`);
   }
   const spec = update ? ['-U', 'gallery-dl'] : ['-r', REQUIREMENTS];
   const r = uv ? run('uv', ['pip', 'install', '--quiet', '--python', python, ...spec])
@@ -48,7 +53,7 @@ export function ensureGalleryDl({ update = false } = {}) {
   if (r.status !== 0 || !existsSync(gdl)) fail(`Gagal memasang gallery-dl.\n${tail(r.stderr || r.error?.message)}`);
   if (update) {
     const pin = readFileSync(REQUIREMENTS, 'utf8').replace(/^gallery-dl==.*$/m, `gallery-dl==${galleryDlVersion(gdl)}`);
-    writeFileSync(REQUIREMENTS, pin);
+    try { writeFileSync(REQUIREMENTS, pin); } catch (e) { console.log('  Folder skill hanya-baca: versi baru dipakai, tetapi pin di tools/requirements.txt tidak diubah.'); }
   }
   return gdl;
 }
@@ -156,7 +161,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   const args = parseArgs();
   if (args.setup || args.update) {
     const gdl = ensureGalleryDl({ update: !!args.update });
-    console.log(`✓ gallery-dl ${galleryDlVersion(gdl)} di tools/.venv`);
+    console.log(`✓ gallery-dl ${galleryDlVersion(gdl)} di ${VENV_LABEL}`);
     console.log(has('ffmpeg', '-version') ? '✓ ffmpeg tersedia (video dipecah menjadi frame)' : '! ffmpeg tidak ditemukan: video tetap terunduh, tapi tanpa frame. Pasang dengan `brew install ffmpeg`.');
     process.exit(0);
   }

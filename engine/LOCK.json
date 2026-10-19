@@ -21,13 +21,13 @@
   "scripts/brand.mjs": "d686439036770b57d402babb590685f699423607e93be7f37f28bad77c69929d",
   "scripts/build.mjs": "f44f51d0f5aa06f0c14b97c529db53ff2bdb386e3804e6a47968279cb47d0c93",
   "scripts/catalog.mjs": "635875f1463bd9f7bb72118d16e6c3ccb188ca419d62414c5e55d75f1946db40",
-  "scripts/component.mjs": "79e3acd6f92c8f8bf221b76f710766bfb8a820aec04eb5c4408d98bb56d49dd9",
+  "scripts/component.mjs": "b5e513bb764f2e47ebd6d93ab08204e44377f58246e7d99aa3c2f1cec67d39b4",
   "scripts/lib/art.mjs": "d3b2e6c61c5752634ad5aeab88b7d889090059dbe5fbd8f0f25e1c50dea3bc22",
   "scripts/lib/brand.mjs": "3dc0efe854a4bc7e4ff5181606c888b3449d4236d8945f337b506addfffa713f",
-  "scripts/lib/chrome.mjs": "565ff977e323fa0e587b9fd37a9e8187ee9c1f11a50c91d55f36495b3d262ae7",
+  "scripts/lib/chrome.mjs": "7fa242ea35f437b2d95a665e0195f09a5184e3bf8f260b56b53805178233e028",
   "scripts/lib/common.mjs": "e8f2f6c9fb4c2f56b1a73b79f9f99e30184f3accd6f7c1853d690e9b0e4aa30a",
   "scripts/lib/components.mjs": "1a282802688a14a31bf2f28da0c6f80cd0f7010d6d34fd3dd591d466a58174fd",
-  "scripts/lib/custom.mjs": "9682e266796282cab7922fe0d133791c1af2e9d1d8f1a857833a96ed402c1b68",
+  "scripts/lib/custom.mjs": "e0f6728ff73d90ff0c3634d3a7faef7483668bb9fcbf79aa0ce8f8c5ec90aa65",
   "scripts/lib/gate-browser.mjs": "40b9d66579d726fa81afa9b8b3a7ba6c0dac9799d0386f0cc90c371e5c30e654",
   "scripts/lib/gate.mjs": "ae408054b12aaf2d5ba06715e5715c20b7c5fd377fb5b110c8a6e33dcd6e27bb",
   "scripts/lib/kit.mjs": "b7ce9d6471452ee4a1e5c982d2937ffe8cb5dfa39fbc07143542ee88fce42347",
@@ -41,10 +41,13 @@
   "scripts/lib/samples.mjs": "535655a1094db1ff64a5c46cd3db8f93db3842e8efa537f99bcac35d527a8a21",
   "scripts/lib/stress.mjs": "664b742aa50297d4ecd0bffca1b23e56931223b93c3e27f32cb381e80cecf535",
   "scripts/lib/svg.mjs": "2d04803f1123ba8734e54b519646bbddbbfb587cc6612b72ae7f85f7f64715fe",
+  "scripts/lib/zip.mjs": "27e516900b202e5956942732b644c0364ed8388494373a21cbe4b5ae1ecf0da4",
   "scripts/lock.mjs": "54922f725303663dd14bec1b69469ef255c3988d6c5763a173395b99eefacb23",
   "scripts/new-post.mjs": "ec740c623d26ff60fdf765aa7f9bb747875b9de0c0a09dd2271dd0413b563e4a",
-  "scripts/ref.mjs": "7a1febdcdc381d49e0f64faa9bfba500af17d1bfd253610de717506cb02313bd",
+  "scripts/package.mjs": "088a5241dd5d596a7db9af0390a6bd51cba914e43612facdcdeae8c6444b5795",
+  "scripts/ref.mjs": "ebe1f225fef28c3e417560fec2b41ea7b9f035f8aee36f1617c9f20c108de239",
   "scripts/scan.mjs": "3af420411e220e331440c5704b9f9334dd4d88674920aec7daf071767052d1e9",
-  "scripts/verify.mjs": "b4285b0c821a5ae42cd403f0856119f848a922394cf1291967c002d063640b83"
+  "scripts/verify.mjs": "b4285b0c821a5ae42cd403f0856119f848a922394cf1291967c002d063640b83",
+  "scripts/workspace.mjs": "5c6fdd569b51a900d5ae174d75098e95c30cd4e873cad743f9e10b4d63a1a077"
  }
 }

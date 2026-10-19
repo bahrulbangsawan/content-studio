@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Components beyond the core catalog. A new component is a single file, <skill>/components/<id>.mjs,
+// Components beyond the core catalog. A new component is a single file, <workspace>/components/<id>.mjs,
 // and may be used in posts only after it passes the gate: the reuse check, the design system and
 // AI-pattern rules, and measured polish (padding, spacing, no offside text, no broken words) on its
 // own sample and on worst-case content, in every variant, light and dark. See references/authoring.md.
@@ -9,7 +9,7 @@
 //   node component.mjs check --id <id> [--brand <akun>]    run the gate; on pass, record it
 //   node component.mjs audit [--id a,b] [--sheets]  run the browser checks on core components
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, dirname } from 'node:path';
 import { parseArgs, workspace, fail, loadIcons, esc, sha256, ENGINE_DIR } from './lib/common.mjs';
 import { loadBrand } from './lib/brand.mjs';
 import { COMPONENTS, roleOf } from './lib/components.mjs';
@@ -82,9 +82,10 @@ if (cmd === 'new') {
   const close = role === 'close';
   writeFileSync(fileOf(id), `// TODO nama: satu kalimat tentang bentuk yang digambar komponen ini.
 // Komponen buatan content-studio. Aturan dan bahan: references/authoring.md. Periksa: node component.mjs check --id ${id}
-import { title, text, list, obj, icon, variant, budget, esc, M, DRAW, iconSvg${close ? ', cta' : ''}, note } from '../scripts/lib/kit.mjs';
-
-export default {
+// Engine memanggil fungsi ini dengan kit design system, jadi berkas ini tidak bergantung pada letak skill.
+export default kit => {
+  const { title, text, list, obj, icon, variant, budget, esc, M, DRAW, iconSvg${close ? ', cta' : ''}, note } = kit;
+  return {
   id: '${id}',
   label: 'TODO nama singkat',${role ? `\n  role: '${role}',` : ''}
   motion: 'rise',
@@ -113,6 +114,7 @@ export default {
   css: \`
 .x-${id} .${id}-list { --gap: 20px; }
 \`,
+  };
 };
 `);
   console.log(`✓ Dibuat: ${relative(process.cwd(), fileOf(id))}\n  Ganti setiap TODO, susun tata letaknya dari kit, lalu jalankan: node component.mjs check --id ${id}\n`);
@@ -369,7 +371,7 @@ if (existsSync(postsDir)) {
 console.log('');
 
 function writeReadme() {
-  const list = Object.values(CUSTOM).filter(c => c.id === id || passOf(c.id).ok);
+  const list = Object.values(CUSTOM).filter(c => dirname(fileOf(c.id)) === dirname(fileOf(id)) && (c.id === id || passOf(c.id).ok));
   const md = [`# Komponen buatan`, '', 'Komponen di folder ini dibuat lewat `node scripts/component.mjs check` dan lolos gerbang pakai ulang, design system, pola AI, dan kerapian. Berkas ini ditulis ulang setiap kali sebuah komponen lolos; jangan diedit.', ''];
   if (!list.length) md.push('Belum ada komponen buatan.');
   for (const c of list) {
@@ -380,5 +382,5 @@ function writeReadme() {
     fieldLines(c).forEach(f => md.push(`  - ${f}`));
     md.push('', '```json', JSON.stringify({ component: c.id, ...c.sample }), '```', '');
   }
-  writeFileSync(join(CUSTOM_DIR, 'README.md'), md.join('\n'));
+  writeFileSync(join(dirname(fileOf(id)), 'README.md'), md.join('\n'));
 }
