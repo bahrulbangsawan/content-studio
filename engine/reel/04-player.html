@@ -526,7 +526,7 @@
     const cuts = [ZN.top, ...ZN.steps.map(([y]) => y).filter(y => y > ZN.top && y < ZN.bottom), ZN.bottom];
     for (let k = 0; k + 1 < cuts.length; k++) { const m = marginAt(cuts[k]); box(k ? 'g-ig g-rail' : 'g-side', 1080 - m, cuts[k], m, cuts[k + 1] - cuts[k], k ? `Kanan ${m} px` : ''); }
     box('g-line', ZN.content.x, ZN.content.y, ZN.content.w, ZN.content.h, `Isi ${ZN.content.w} x ${ZN.content.h}`);
-    box('g-cap', ZN.caption.x, ZN.caption.y, ZN.caption.w, ZN.caption.h, 'Subtitle');
+    box('g-cap', ZN.caption.x, ZN.caption.y, ZN.caption.w, ZN.caption.h, 'Subtitle (menempel di batas bawah)');
   })();
   function showOnly(i, tau) {
     REG.forEach((R, j) => { const v = j === i; if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; } untrans(j); });
@@ -553,14 +553,16 @@
       range.selectNodeContents(node);
       const rects = Array.from(range.getClientRects()).map(box).filter(r => r.w > 1 && r.h > 1);
       /* Ukuran seperti tampil di video: adegan dirancang 800 px lalu diperkecil ke zona aman */
-      const fs = parseFloat(getComputedStyle(pe).fontSize) * (pe.closest('.cz-close') ? ZN.closeZoom : pe.closest('.cz') ? ZN.zoom : 1);
+      const fs = parseFloat(getComputedStyle(pe).fontSize) * (pe.closest('.cz') ? ZN.zoom : 1);
       const meta = !!pe.closest(META_TEXT);
       minPx = Math.min(minPx, fs);
       const minFs = meta ? VR.minMetaPx : VR.minTextPx;
       if (fs < minFs - 0.5) res.min.push(`"${node.textContent.trim().slice(0, 24)}" ${Math.round(fs)} px (minimal ${minFs})`);
       for (const r of rects) { const m = Math.max(marginAt(r.y), marginAt(r.y + r.h)); if (r.x + r.w > 1080 - m + 2) { res.rail.push(`"${node.textContent.trim().slice(0, 24)}" di area tombol (margin kanan ${m} px)`); break; } }
+      /* The closing's footnotes have their own band under the scene */
+      const zz = pe.closest('.r-foot') ? ZN.foot : z;
       for (const r of rects) {
-        if (r.x < z.x - 3 || r.x + r.w > z.x + z.w + 3 || r.y < z.y - 3 || r.y + r.h > z.y + z.h + 3) { res.zone.push(`"${node.textContent.trim().slice(0, 24)}" keluar zona konten`); break; }
+        if (r.x < zz.x - 3 || r.x + r.w > zz.x + zz.w + 3 || r.y < zz.y - 3 || r.y + r.h > zz.y + zz.h + 3) { res.zone.push(`"${node.textContent.trim().slice(0, 24)}" keluar zona ${zz === z ? 'isi' : 'catatan kaki'}`); break; }
       }
       if (!pe.closest('.r-card, .r-chip, .r-lab-t, .cap')) {
         for (const r of rects) if (medias.some(m => r.x < m.x + m.w && r.x + r.w > m.x && r.y < m.y + m.h && r.y + r.h > m.y)) { res.media.push(`"${node.textContent.trim().slice(0, 24)}" di atas foto tanpa kartu`); break; }

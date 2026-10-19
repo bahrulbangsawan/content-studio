@@ -34,8 +34,8 @@ function overlap(onScreen, vo) {
 /** The account's video zones as CSS variables on the frame: layout, guide overlay and checks read the same numbers.
     Scenes are laid out DESIGN_W wide and scaled into the safe zone (--zoom). */
 export function zoneCss(v) {
-  const z = videoZones(v), c = z.content, cl = z.close, cp = z.caption;
-  return `.rf { --cz-x: ${c.x}px; --cz-y: ${c.y}px; --cz-h: ${c.h}px; --zoom: ${z.zoom}; --cl-h: ${cl.h}px; --cl-zoom: ${z.closeZoom}; --cap-x: ${cp.x}px; --cap-y: ${cp.y}px; --cap-w: ${cp.w}px; --cap-h: ${cp.h}px; --hdr-h: ${z.top}px; --safe-l: ${z.left}px; }`;
+  const z = videoZones(v), c = z.content, cp = z.caption, f = z.foot;
+  return `.rf { --cz-x: ${c.x}px; --cz-y: ${c.y}px; --cz-w: ${c.w}px; --cz-h: ${c.h}px; --zoom: ${z.zoom}; --cap-x: ${cp.x}px; --cap-y: ${cp.y}px; --cap-w: ${cp.w}px; --cap-h: ${cp.h}px; --ft-x: ${f.x}px; --ft-y: ${f.y}px; --ft-w: ${f.w}px; --ft-h: ${f.h}px; --hdr-h: ${z.top}px; --hdr-x: ${c.x}px; }`;
 }
 
 export function renderReel(reel, ctx) {
@@ -125,12 +125,11 @@ function guide(scenes, seq, v) {
   const steps = z.steps.map(([y, r]) => `${r} px dari y ${y}`).join(', ');
   return `<div class="sec"><h3>Zona aman video (9:16)</h3><p class="note">Aturan ini khusus video. Carousel memakai zonanya sendiri: header dan footer 168 px, margin 96 px.</p><dl class="kv">${rows([
     ['Header', `y 0 sampai ${z.top} (${pc(z.top)}): logo dan handle${v.headerBrand ? '' : ' (dimatikan)'}, di luar zona aman. Bilah atas aplikasi bisa menimpanya.`],
-    ['Bawah', `y ${z.bottom} sampai 1920 (${pc(1920 - z.bottom)}): nama akun, caption, audio, tombol. Tanpa isi.`],
-    ['Kiri', `${z.left} px.`],
-    ['Kanan', `${z.right} px di atas${steps ? `, lalu ${steps} untuk kolom tombol` : ''}.`],
-    ['Isi adegan', `x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.content.y + z.content.h}. Tata letak dirancang ${'800'} px lalu diperkecil ${num(Math.round(z.zoom * 100))}% agar pas.`],
-    ['Subtitle', `y ${v.captionTop} sampai ${v.captionBottom}, x ${z.caption.x} sampai ${z.caption.x + z.caption.w}, di dalam zona aman, sekitar ${v.captionChars} karakter per baris.`],
-    ['Penutup', `isi sampai y ${z.bottom}: disclaimer dan sumber memakai pita subtitle.`],
+    ['Bawah', `y ${z.bottom} sampai 1920 (${pc(1920 - z.bottom)}): nama akun, caption, audio. Tanpa isi.`],
+    ['Samping', `kiri ${z.left} px, kanan ${z.right} px${steps ? `, lalu ${steps} untuk kolom tombol` : ''}.`],
+    ['Isi adegan', `x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.content.y + z.content.h}, di atas kolom tombol${v.contentInset ? `, ${v.contentInset} px dari tepi zona aman` : ''}. Skala tata letak ${num(Math.round(z.zoom * 100))}%.`],
+    ['Subtitle', `y ${v.captionTop} sampai ${v.captionBottom}, menempel di batas bawah zona aman, x ${z.caption.x} sampai ${z.caption.x + z.caption.w}, sekitar ${v.captionChars} karakter per baris.`],
+    ['Penutup', `disclaimer, sumber, dan handle di bawah isi: y ${z.foot.y} sampai ${z.foot.y + z.foot.h}.`],
   ])}</dl><p class="note">Tombol zona di bawah video menggambar area ini di atas adegan.${v.preset ? ` Preset: ${esc(v.preset)}.` : ''}</p></div>
 <div class="sec"><h3>Aturan video</h3><dl class="kv">${rows([
     ['Huruf terkecil', `${v.minTextPx} px untuk isi, ${v.minMetaPx} px untuk sumber dan disclaimer, seperti tampil di video.`],

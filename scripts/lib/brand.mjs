@@ -18,22 +18,24 @@ export const DEFAULT_RULES = {
 };
 /* Video rules (Reels, 1080 x 1920): safe zones, reading, pace and length. Separate from the carousel's, because a
    video is watched full screen under the platform's top bar, caption, name and buttons, a few seconds per scene.
-   The default safe zone is where two common 9:16 templates are both safe (TikTok's 540 x 960 guide doubled, and a
-   1080 x 1920 template): top 252, left 120, right 120 (240 from y 360, 300 from y 840 for the button column),
-   bottom 704. The logo and handle sit in the header above it; subtitles sit at its foot. Writing rules (banned
+   Default safe zone (the account owner's reference): top 220, sides 35, bottom 450, and the button column
+   100 px wide on the right from y 1160. Scenes fill the zone above the button column, centred; subtitles sit
+   flush on the zone's bottom edge; the logo and handle sit in the header above it. Writing rules (banned
    phrases, exclamation marks) follow the carousel's unless set here. */
 export const DEFAULT_VIDEO_RULES = {
-  safeTop: 252,          // px from the top: header (logo and handle) and the platform's top bar; no content
-  safeBottom: 704,       // px from the bottom: name, caption, audio, buttons; no content
-  safeLeft: 120,
-  safeRight: 120,        // right margin at the top of the safe zone ...
-  rightSteps: [[360, 240], [840, 300]], // ... widening to clear the button column: [from y, right margin]
-  captionTop: 1060,      // burned-in subtitles, inside the safe zone at its foot
-  captionBottom: 1216,
+  safeTop: 220,          // px from the top: header (logo and handle) and the platform's top bar; no content
+  safeBottom: 450,       // px from the bottom: name, caption, audio; no content
+  safeLeft: 35,
+  safeRight: 35,
+  rightSteps: [[1160, 135]], // the button column: from this height the right margin is 35 + 100
+  contentInset: 25,      // breathing room between the safe zone's sides and the scene
+  contentBottom: 1144,   // scenes end here, above the button column, so they stay centred
+  captionTop: 1320,      // burned-in subtitles, flush on the safe zone's bottom edge
+  captionBottom: 1470,
   headerBrand: true,     // logo and handle in the header, above the safe zone, on every scene
   minTextPx: 32,         // smallest text in a scene, as it appears in the video
   minMetaPx: 26,         // smallest source line and disclaimer
-  captionChars: 22,      // characters per subtitle line
+  captionChars: 26,      // characters per subtitle line
   captions: true,        // burned-in subtitles by default
   maxWordsPerSecond: 4,    // an energetic explainer runs 3 to 4 words a second; faster is hard to follow
   hookMaxSeconds: 5,     // the first scene should land within this
@@ -42,20 +44,21 @@ export const DEFAULT_VIDEO_RULES = {
   maxSeconds: 90,        // longer than this: a warning (explainers do best at 30 to 75 s)
   hardMaxSeconds: 180,   // Instagram recommends reels up to 3 minutes to new viewers
 };
-/* Named sets for the two templates on their own, to start from in videoRules */
+/* Named sets for other 9:16 templates, to start from in videoRules ("preset") */
 export const VIDEO_PRESETS = {
-  gabungan: {},
-  'tiktok-540': { safeTop: 252, safeBottom: 704, safeLeft: 120, safeRight: 120, rightSteps: [[360, 240]], captionTop: 1060, captionBottom: 1216 },
-  'template-1080': { safeTop: 160, safeBottom: 480, safeLeft: 120, safeRight: 120, rightSteps: [[840, 300]], captionTop: 1284, captionBottom: 1440 },
+  reels: {},
+  'tiktok-540': { safeTop: 252, safeBottom: 704, safeLeft: 120, safeRight: 120, rightSteps: [[360, 240]], contentInset: 0, contentBottom: 1050, captionTop: 1066, captionBottom: 1216 },
+  'template-1080': { safeTop: 160, safeBottom: 480, safeLeft: 120, safeRight: 120, rightSteps: [[840, 300]], contentInset: 0, contentBottom: 1274, captionTop: 1290, captionBottom: 1440 },
+  ketat: { safeTop: 252, safeBottom: 704, safeLeft: 120, safeRight: 120, rightSteps: [[360, 240], [840, 300]], contentInset: 0, contentBottom: 1044, captionTop: 1060, captionBottom: 1216 },
 };
 const VIDEO_RANGE = {
-  safeTop: [120, 400], safeBottom: [300, 800], safeLeft: [40, 200], safeRight: [40, 200],
-  captionTop: [700, 1700], captionBottom: [800, 1800], minTextPx: [26, 64], minMetaPx: [22, 40], captionChars: [14, 32],
+  safeTop: [100, 400], safeBottom: [250, 800], safeLeft: [0, 200], safeRight: [0, 200], contentInset: [0, 80], contentBottom: [700, 1700],
+  captionTop: [700, 1750], captionBottom: [800, 1850], minTextPx: [26, 64], minMetaPx: [22, 40], captionChars: [14, 34],
   maxWordsPerSecond: [2.4, 4.5], hookMaxSeconds: [2, 8], maxSceneSeconds: [6, 20], minSeconds: [3, 60], maxSeconds: [15, 180], hardMaxSeconds: [30, 900],
 };
 const WRITING = ['noExclamation', 'noEmDash', 'bannedPhrases', 'requireDisclaimer'];
-/* Scenes are laid out at this width and scaled to the safe zone's width, so every layout keeps its proportions */
-export const DESIGN_W = 800;
+/* Scenes are laid out at least this big and scaled into the content zone, so every layout keeps its proportions */
+export const DESIGN_W = 800, DESIGN_H = 940;
 
 /** The rules a reel follows: video defaults, a named preset, the account's writing rules, then the account's videoRules. */
 export function videoRulesOf(b) {
@@ -66,16 +69,19 @@ export function videoRulesOf(b) {
 }
 /** Right margin at a height: the widest step at or above it. */
 export const marginAt = (v, y) => (v.rightSteps || []).reduce((m, [y0, r]) => (y >= y0 ? Math.max(m, r) : m), v.safeRight);
-/** Pixel boxes of the video zones, for the engine, the guide overlay and the checks. Scenes use one rectangle: the
-    widest right margin it reaches, so no line of text can run under the buttons. */
+/** Pixel boxes of the video zones, for the engine, the guide overlay and the checks. A box reaching a step of the
+    button column takes that step's margin, so no line of text can run under the buttons. Subtitles and the
+    closing's footnotes sit in bands centred on the frame. */
 export function videoZones(v) {
-  const bottom = 1920 - v.safeBottom;
-  const maxMargin = (y0, y1) => Math.max(v.safeRight, ...(v.rightSteps || []).filter(([y]) => y < y1).map(([, r]) => r));
-  const cBottom = v.captions === false ? bottom : v.captionTop - 16;
-  const content = { x: v.safeLeft, y: v.safeTop, w: 1080 - v.safeLeft - maxMargin(v.safeTop, cBottom), h: cBottom - v.safeTop };
-  const close = { x: v.safeLeft, y: v.safeTop, w: 1080 - v.safeLeft - maxMargin(v.safeTop, bottom), h: bottom - v.safeTop };
-  const caption = { x: v.safeLeft, y: v.captionTop, w: 1080 - v.safeLeft - maxMargin(v.captionTop, v.captionBottom), h: v.captionBottom - v.captionTop };
-  return { top: v.safeTop, bottom, left: v.safeLeft, right: v.safeRight, steps: v.rightSteps || [], content, close, caption, zoom: +Math.min(1, content.w / DESIGN_W).toFixed(4), closeZoom: +Math.min(1, close.w / DESIGN_W).toFixed(4) };
+  const bottom = 1920 - v.safeBottom, inset = v.contentInset || 0;
+  const maxMargin = y1 => Math.max(v.safeRight, ...(v.rightSteps || []).filter(([y]) => y < y1).map(([, r]) => r));
+  const cBottom = Math.min(v.contentBottom, v.captions === false ? bottom : v.captionTop - 16);
+  const left = v.safeLeft + inset, right = maxMargin(cBottom) + inset;
+  const content = { x: left, y: v.safeTop, w: 1080 - left - right, h: cBottom - v.safeTop };
+  const band = (y0, y1) => { const m = Math.max(v.safeLeft, maxMargin(y1)); return { x: m, y: y0, w: 1080 - 2 * m, h: y1 - y0 }; };
+  const caption = band(v.captionTop, v.captionBottom), foot = band(cBottom + 16, bottom);
+  const zoom = +Math.min(content.w / DESIGN_W, content.h / DESIGN_H).toFixed(4);
+  return { top: v.safeTop, bottom, left: v.safeLeft, right: v.safeRight, steps: v.rightSteps || [], content, caption, foot, zoom };
 }
 
 const COLOR_KEYS = ['bg', 'card', 'ink', 'muted', 'accent'];
@@ -153,8 +159,9 @@ export function validateBrand(b, dir) {
     if (b.videoRules.rightSteps !== undefined && (!Array.isArray(v.rightSteps) || v.rightSteps.some((st, k) => !Array.isArray(st) || st.length !== 2 || !st.every(Number.isFinite) || st[0] < v.safeTop || st[0] > 1920 || st[1] < 0 || st[1] > 500 || (k && st[0] <= v.rightSteps[k - 1][0])))) errors.push('videoRules.rightSteps: daftar [mulai y, margin kanan] dengan y naik, misalnya [[360, 240], [840, 300]].');
     if (!errors.some(e => e.startsWith('videoRules.'))) {
       const z = videoZones(v);
-      if (z.content.h < 560) errors.push(`Zona konten video hanya ${z.content.h} px tinggi (safeTop sampai captionTop). Minimal 560 px.`);
-      if (z.content.w < 560) errors.push(`Zona konten video hanya ${z.content.w} px lebar (safeLeft dan margin kanan). Minimal 560 px.`);
+      if (z.content.h < 560) errors.push(`Zona isi video hanya ${z.content.h} px tinggi (safeTop sampai contentBottom). Minimal 560 px.`);
+      if (z.foot.h < 120) errors.push(`Ruang di bawah isi hanya ${z.foot.h} px; penutup butuh minimal 120 px untuk disclaimer dan sumber.`);
+      if (z.content.w < 560) errors.push(`Zona isi video hanya ${z.content.w} px lebar (safeLeft, margin kanan, contentInset). Minimal 560 px.`);
       if (v.captionBottom > z.bottom) errors.push(`videoRules.captionBottom ${v.captionBottom} keluar zona aman (berakhir di ${z.bottom}).`);
       if (v.captionBottom - v.captionTop < 130) errors.push('Pita subtitle (captionTop sampai captionBottom) minimal 130 px untuk dua baris.');
       if (v.maxSeconds > v.hardMaxSeconds) errors.push('videoRules.maxSeconds tidak boleh lebih dari hardMaxSeconds.');

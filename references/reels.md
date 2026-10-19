@@ -288,7 +288,7 @@ Varian: `follow` ikuti (logo besar), `save` simpan, `share` kirim, `comment` per
   2. Jeda yang terdengar di klip, dicocokkan dengan tanda baca naskah.
   3. Perkiraan dari naskah.
 - **Transisi.** Bawaannya bergiliran: `up`, `wipe`, `zoom`, `slide`, `circle`, `fade`. Footage penuh memakai `fade` atau `zoom`. Isi `transition` hanya bila ingin efek tertentu; `cut` untuk potongan langsung.
-- **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 22 karakter) di kaki zona aman, di pelat kartu, dengan kata yang diucapkan disorot.
+- **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 26 karakter), menempel di batas bawah zona aman, di pelat kartu, dengan kata yang diucapkan disorot.
   - Disembunyikan otomatis di adegan yang teks layarnya sama dengan suaranya, dan di penutup.
   - `"captions": false` mematikan semuanya.
   - Ekspor SRT selalu berisi seluruh voice over.
@@ -393,22 +393,21 @@ Jangan mengecilkan huruf atau mengedit HTML hasil build.
 
 Video punya zona dan aturannya sendiri, terpisah dari carousel. Video ditonton penuh layar di bawah bilah atas aplikasi, nama akun, caption, dan kolom tombol, beberapa detik per adegan. Carousel dibaca sambil digeser, dengan header dan footer di dalam slide.
 
-Zona aman bawaan adalah area yang aman di dua template 9:16 sekaligus: panduan TikTok 540 x 960 (dikali dua) dan template 1080 x 1920.
-
 | | Carousel (`rules`) | Reels (`videoRules`) |
 | --- | --- | --- |
 | Bingkai | 1080 x 1350, 4:5 | 1080 x 1920, 9:16 |
-| Atas | header slide 168 px (logo, nomor) | header 252 px: logo dan handle, di luar zona aman |
-| Bawah | footer slide 168 px (handle, geser) | 704 px tanpa isi (nama, caption, audio, tombol) |
-| Samping | 96 px | kiri 120 px; kanan 120 px, lalu 240 px dari y 360 dan 300 px dari y 840 (kolom tombol) |
-| Isi | x 96 sampai 984, y 168 sampai 1182 | x 120 sampai 780, y 252 sampai 1044; penutup sampai y 1216 |
-| Subtitle | tidak ada | y 1060 sampai 1216, di dalam zona aman |
+| Atas | header slide 168 px (logo, nomor) | header 220 px: logo dan handle, di luar zona aman |
+| Bawah | footer slide 168 px (handle, geser) | 450 px tanpa isi (nama, caption, audio) |
+| Samping | 96 px | 35 px; kolom tombol 100 px di kanan mulai y 1160 |
+| Isi | x 96 sampai 984, y 168 sampai 1182 | x 60 sampai 1020, y 220 sampai 1144 (di atas kolom tombol, di tengah) |
+| Subtitle | tidak ada | y 1320 sampai 1470, menempel di batas bawah zona aman |
 | Nomor | nomor slide di header | tidak ada |
 | Huruf terkecil | 30 px | 32 px isi, 26 px sumber (seperti tampil di video) |
 | Waktu | animasi masuk sampai 1,2 detik | suara paling cepat 4 kata per detik, pembuka 5 detik, adegan 14 detik, total 15 sampai 90 detik (batas 180) |
 
-- **Ukuran adegan.** Adegan dirancang 800 px lebar lalu diperkecil agar pas dengan lebar zona aman (bawaan 83%). Semua tata letak tetap proporsional, dan ukuran huruf diperiksa seperti tampil di video.
-- **Mengatur.** Pemilik akun bisa mengubah setiap angka di `brand.json` bagian `videoRules`. Bisa juga memilih `preset` `tiktok-540` atau `template-1080` untuk memakai salah satu template saja. Kunci dan batasnya ada di `references/brand-setup.md`.
+- **Ukuran adegan.** Adegan dirancang minimal 800 x 940 px lalu diskalakan ke zona isi (bawaan 98%). Semua tata letak tetap proporsional, dan ukuran huruf diperiksa seperti tampil di video.
+- **Penutup.** Disclaimer, sumber, dan handle penutup berada di bawah isi, di atas batas bawah zona aman.
+- **Mengatur.** Pemilik akun bisa mengubah setiap angka di `brand.json` bagian `videoRules`, atau memilih `preset` `tiktok-540`, `template-1080`, atau `ketat`. Kunci dan batasnya ada di `references/brand-setup.md`.
   - Tata letak, garis panduan zona di studio (tombol zona, atau tekan Z), pemeriksaan, dan scan semuanya memakai angka itu.
   - Ubah hanya atas permintaan pemilik akun, lalu jalankan `brand accept` setelah mereka setuju.
 - **Melihat.** `content-studio brand rules --id <akun>` mencetak aturan carousel dan aturan video berdampingan. Tab Panduan di studio Reels menampilkan zona dan aturan video akun ini.

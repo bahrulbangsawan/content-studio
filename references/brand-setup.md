@@ -124,27 +124,32 @@ Zona carousel tetap di engine:
 
 ### Aturan video (`videoRules`)
 
-Zona aman bawaannya adalah area yang aman di dua template 9:16 sekaligus: panduan TikTok 540 x 960 (dikali dua) dan template 1080 x 1920. Dalam piksel 1080 x 1920:
+Zona aman bawaan mengikuti referensi pemilik akun untuk Reels 1080 x 1920:
 
-- **Header** y 0 sampai 252. Berisi logo dan handle, di luar zona aman.
-- **Kiri** 120 px.
-- **Kanan** 120 px, lalu 240 px mulai y 360 dan 300 px mulai y 840 untuk kolom tombol.
-- **Bawah** dari y 1216 (704 px). Berisi nama, caption, audio, dan tombol.
-- **Subtitle** di kaki zona aman, y 1060 sampai 1216.
+- **Header** y 0 sampai 220. Berisi logo dan handle, di luar zona aman.
+- **Samping** 35 px kiri dan kanan.
+- **Kolom tombol** 100 px di kanan mulai y 1160, jadi margin kanan di situ 135 px.
+- **Bawah** dari y 1470 (450 px). Berisi nama, caption, dan audio.
 
-Adegan dirancang 800 px lalu diperkecil agar pas dengan lebar zona aman, jadi semua tata letak tetap proporsional. Tata letak, garis panduan zona di studio, dan pemeriksaan semuanya memakai angka ini.
+Isi adegan berada di x 60 sampai 1020 dan y 220 sampai 1144. Area itu ada di atas kolom tombol supaya isi tetap di tengah, dengan jarak 25 px dari tepi zona aman.
+
+Subtitle menempel di batas bawah zona aman (y 1320 sampai 1470). Disclaimer dan sumber penutup ada di antara isi dan batas bawah.
+
+Adegan dirancang minimal 800 x 940 px lalu diskalakan ke zona isi, sekitar 98% dengan angka bawaan. Tata letak, garis panduan zona di studio, dan pemeriksaan semuanya memakai angka ini.
 
 | Kunci | Bawaan | Arti |
 | --- | --- | --- |
-| `preset` | (gabungan) | `tiktok-540` (gambar TikTok saja) atau `template-1080` (template 1080 x 1920 saja), sebagai titik awal |
-| `safeTop` | 252 | header di atas zona aman (120 sampai 400) |
-| `safeBottom` | 704 | px dari bawah tanpa isi (300 sampai 800) |
-| `safeLeft`, `safeRight` | 120, 120 | margin kiri, dan kanan di bagian atas (40 sampai 200) |
-| `rightSteps` | [[360, 240], [840, 300]] | margin kanan yang melebar ke bawah: [mulai y, margin] |
-| `captionTop`, `captionBottom` | 1060, 1216 | pita subtitle, di dalam zona aman |
+| `preset` | `reels` | titik awal lain: `tiktok-540`, `template-1080`, atau `ketat` (aman di keduanya) |
+| `safeTop` | 220 | header di atas zona aman |
+| `safeBottom` | 450 | px dari bawah tanpa isi |
+| `safeLeft`, `safeRight` | 35, 35 | margin kiri dan kanan |
+| `rightSteps` | [[1160, 135]] | kolom tombol: [mulai y, margin kanan] |
+| `contentInset` | 25 | jarak isi adegan dari tepi zona aman |
+| `contentBottom` | 1144 | isi adegan berakhir di sini, di atas kolom tombol |
+| `captionTop`, `captionBottom` | 1320, 1470 | pita subtitle, menempel di batas bawah zona aman |
 | `headerBrand` | true | logo dan handle di header setiap adegan |
 | `minTextPx` / `minMetaPx` | 32 / 26 | huruf terkecil seperti tampil di video: isi / sumber dan disclaimer |
-| `captionChars` | 22 | karakter per baris subtitle |
+| `captionChars` | 26 | karakter per baris subtitle |
 | `captions` | true | subtitle tertanam |
 | `maxWordsPerSecond` | 4 | voice over lebih cepat dari ini diperingatkan |
 | `hookMaxSeconds` | 5 | panjang pembuka |
@@ -156,13 +161,14 @@ Adegan dirancang 800 px lalu diperkecil agar pas dengan lebar zona aman, jadi se
 `check` juga memeriksa batas-batas ini:
 
 - Zona isi minimal 560 x 560 px.
+- Ruang catatan kaki penutup minimal 120 px.
 - Subtitle berada di dalam zona aman.
 - `rightSteps` berurutan dari atas ke bawah.
 
-Contoh, memakai template 1080 x 1920 saja dan durasi lebih pendek:
+Contoh, durasi lebih pendek tanpa logo di header:
 
 ```json
-"videoRules": { "preset": "template-1080", "maxSeconds": 60 }
+"videoRules": { "maxSeconds": 60, "headerBrand": false }
 ```
 
 ### Pelafalan voice over (`pronounce`)

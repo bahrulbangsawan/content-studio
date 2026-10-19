@@ -473,9 +473,9 @@ ${src.short ? `<p class="r-ev-src"${A('fade', k.end + 0.3)}>${esc(String(src.cit
         : ill(ctx, s.art || def, 'l', t0);
       const k = kin(ctx, s.title, { at: t0 + 0.25, focus: s.focus });
       const srcs = ctx.sourceList.length ? `<p class="r-refs"${A('fade', k.end + 0.4)}><b>Sumber</b> ${esc(ctx.sourceList.join('; '))}</p>` : '';
-      return `<div class="cz cz-close r-close v-${v}"><div class="r-close-main">${top}<h2 class="r-h2 ${fit('h2', s.title)}">${k.html}</h2>
-${chip(ctx, s.cta.icon, s.cta.text, 'c-joint r-cta', k.end + 0.15)}</div>
-<div class="r-foot"${A('fade', k.end + 0.35)}>${b.disclaimer ? `<p class="r-disc">${esc(b.disclaimer)}</p>` : ''}${srcs}<p class="r-handle">@${esc(b.handle)}</p></div></div>`;
+      return `<div class="cz r-close v-${v}"><div class="r-close-main">${top}<h2 class="r-h2 ${fit('h2', s.title)}">${k.html}</h2>
+${chip(ctx, s.cta.icon, s.cta.text, 'c-joint r-cta', k.end + 0.15)}</div></div>
+<div class="r-foot"${A('fade', k.end + 0.35)}>${b.disclaimer ? `<p class="r-disc">${esc(b.disclaimer)}</p>` : ''}${srcs}<p class="r-handle">@${esc(b.handle)}</p></div>`;
     },
   },
 };

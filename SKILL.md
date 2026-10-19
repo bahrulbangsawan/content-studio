@@ -242,11 +242,12 @@ Baca `references/reels.md` sebelum menulis `reel.json`.
 
 Reels mengikuti **aturan video** akun (`videoRules` di brand.json), terpisah dari aturan carousel (`rules`):
 
-- **Zona aman 9:16.** Aman di dua template sekaligus (TikTok 540 x 960 dan template 1080 x 1920).
-  - Header 252 px berisi logo dan handle, di luar zona aman. Tidak ada nomor adegan.
-  - Kiri 120 px; kanan 120 px, lalu 240 px dari y 360 dan 300 px dari y 840 untuk kolom tombol.
-  - Bawah 704 px tanpa isi. Subtitle ada di kaki zona aman.
-  - Adegan diperkecil agar pas dengan zona itu.
+- **Zona aman 9:16.**
+  - Header 220 px berisi logo dan handle, di luar zona aman. Tidak ada nomor adegan.
+  - Samping 35 px; kolom tombol 100 px di kanan mulai y 1160.
+  - Bawah 450 px tanpa isi.
+  - Isi adegan di x 60 sampai 1020, y 220 sampai 1144, di tengah dan di atas kolom tombol. Adegan diskalakan ke zona itu.
+  - Subtitle menempel di batas bawah zona aman.
 - **Ukuran dan tempo.** Huruf minimal 32 px seperti tampil di video, voice over paling cepat 4 kata per detik.
 - **Durasi.** Pembuka paling lama 5 detik, satu adegan paling lama 14 detik, total yang disarankan 15 sampai 90 detik.
 
