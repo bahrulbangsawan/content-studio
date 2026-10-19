@@ -1,4 +1,6 @@
-# Aturan pemeriksaan
+# Aturan pemeriksaan carousel
+
+Aturan di halaman ini khusus carousel (slide 1080 x 1350, `rules` di brand.json). Reels punya zona aman dan aturannya sendiri: lihat bagian "Zona aman dan aturan video" di `references/reels.md` dan `videoRules` di `references/brand-setup.md`.
 
 Ada dua lapis pemeriksaan. Keduanya harus lolos sebelum postingan diserahkan.
 

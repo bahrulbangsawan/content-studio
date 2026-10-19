@@ -123,7 +123,7 @@ const COMMON = { art: art(false) };
 
 export const SCENES = {
   hook: {
-    label: 'Pembuka', role: 'open', full: true, vo: 18,
+    label: 'Pembuka', role: 'open', full: true, vo: 14,
     desc: 'Detik pertama: pertanyaan, klaim, mitos, atau angka yang membuat orang berhenti menggulir. Bicara langsung tanpa salam.',
     visual: 'Ilustrasi besar, footage, atau angka yang dihitung naik',
     variants: { question: 'Pertanyaan', bold: 'Kalimat besar', myth: 'Mitos dicoret', number: 'Angka', footage: 'Footage penuh', split: 'Footage dan teks' },
@@ -263,6 +263,7 @@ ${s.kicker ? `<p class="r-kick"${A('rise', k.end + 0.1)}>${esc(s.kicker)}</p>` :
       if (n === 5 && s.steps.some(x => x.text)) out.push('steps: lima langkah tanpa "text" (tidak muat). Hapus text atau kurangi jadi empat langkah.');
       if (n === 4 && s.steps.some(x => x.text && (words(x.text) > 6 || x.text.length > 36))) out.push('steps[].text: empat langkah, text paling banyak 6 kata dan 36 karakter.');
       if (s.variant === 'cards' && n >= 4 && s.steps.some(x => x.text && words(x.text) > 5)) out.push('steps[].text: varian cards dengan empat langkah atau lebih, text paling banyak 5 kata.');
+      if (s.variant === 'cards' && n >= 4 && s.steps.some(x => String(x.title).length > 24)) out.push('steps[].title: varian cards dengan empat langkah atau lebih, title paling banyak 24 karakter.');
       return out;
     },
     render(s, ctx) {

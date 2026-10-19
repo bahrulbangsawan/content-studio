@@ -3,12 +3,13 @@
 //   node brand.mjs init   --from answers.json [--replace]   create an account from the owner's answers
 //   node brand.mjs check  --id <id>                          validate and print contrast ratios
 //   node brand.mjs accept --id <id>                          re-approve after the OWNER agreed to a change
+//   node brand.mjs rules  --id <id>                          carousel rules and video rules, with their source
 //   node brand.mjs list
 // All commands take [--root <workspace>] (default ./content-studio).
 import { mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { parseArgs, workspace, readJson, fail, report, ratioText } from './lib/common.mjs';
-import { validateBrand, writeLock, loadBrand, brandDir } from './lib/brand.mjs';
+import { validateBrand, writeLock, loadBrand, brandDir, DEFAULT_RULES, DEFAULT_VIDEO_RULES, videoZones } from './lib/brand.mjs';
 import { sanitizeSvg } from './lib/svg.mjs';
 
 const args = parseArgs();
@@ -64,6 +65,7 @@ if (cmd === 'init') {
     swipeLabel: a.swipeLabel || (a.language === 'en' ? 'Swipe' : 'Geser'),
     ...(a.structure ? { structure: a.structure } : {}),
     ...(a.rules ? { rules: a.rules } : {}),
+    ...(a.videoRules ? { videoRules: a.videoRules } : {}),
     ...(a.dos ? { dos: a.dos } : {}),
   };
   writeFileSync(join(dir, 'brand.json'), JSON.stringify(brand, null, 2) + '\n');
@@ -91,6 +93,19 @@ if (cmd === 'init') {
   if (v.errors.length) fail('Akun tidak valid, jadi tidak bisa disetujui.');
   writeLock(brand, dir);
   console.log('✓ Perubahan akun disetujui dan dikunci ulang.\n');
+} else if (cmd === 'rules') {
+  if (!args.id) fail('Pakai: node brand.mjs rules --id <id>');
+  const { brand, rules, videoRules } = loadBrand(root, args.id);
+  const show = (title, eff, own, defs) => {
+    console.log(`\n${title}\n${'─'.repeat(60)}`);
+    for (const [k, v] of Object.entries(eff)) console.log(`  ${k.padEnd(20)}${JSON.stringify(v).padEnd(18)}  ${own && k in own ? 'akun' : k in defs ? 'bawaan' : 'dari aturan carousel'}`);
+  };
+  show('Aturan carousel (rules): slide 1080 x 1350', rules, brand.rules, DEFAULT_RULES);
+  show('Aturan video (videoRules): Reels 1080 x 1920', videoRules, brand.videoRules, DEFAULT_VIDEO_RULES);
+  const z = videoZones(videoRules);
+  console.log(`\nZona video: teks di x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.bottom} (adegan pertama dan terakhir dari y ${z.top}); subtitle y ${videoRules.captionTop} sampai ${videoRules.captionBottom}; tombol kanan x ${z.rail.x} ke kanan dari y ${z.rail.y}.`);
+  console.log('Zona carousel: header y 0 sampai 168, konten y 168 sampai 1182 dan x 96 sampai 984, footer y 1182 sampai 1350.');
+  console.log('Ubah hanya atas permintaan pemilik: edit brand.json (rules atau videoRules), brand.mjs check, lalu accept setelah pemilik setuju.\n');
 } else if (cmd === 'list') {
   const dir = join(root, 'brands');
   const ids = existsSync(dir) ? readdirSync(dir).filter(d => existsSync(join(dir, d, 'brand.json'))) : [];
@@ -101,5 +116,5 @@ if (cmd === 'init') {
     console.log(`${intact ? '✓' : '!'} ${id}  ${brand.name}  @${brand.handle}  ${status}`);
   }
 } else {
-  fail('Perintah: init, check, accept, atau list. Lihat references/brand-setup.md.');
+  fail('Perintah: init, check, accept, rules, atau list. Lihat references/brand-setup.md.');
 }

@@ -22,6 +22,7 @@ Isi:
 9. Suara dan musik
 10. Pemeriksaan dan cara memperbaikinya
 11. Ekspor
+12. Zona aman dan aturan video
 
 ## 1. Kapan reel, kapan carousel
 
@@ -278,7 +279,7 @@ Varian: `follow` ikuti (logo besar), `save` simpan, `share` kirim, `comment` per
   2. Jeda yang terdengar di klip, dicocokkan dengan tanda baca naskah.
   3. Perkiraan dari naskah.
 - **Transisi.** Bawaannya bergiliran: `up`, `wipe`, `zoom`, `slide`, `circle`, `fade`. Footage penuh memakai `fade` atau `zoom`. Isi `transition` hanya bila ingin efek tertentu; `cut` untuk potongan langsung.
-- **Subtitle.** Satu atau dua baris pendek (sekitar 24 karakter), di pelat kartu, dengan kata yang diucapkan disorot.
+- **Subtitle.** Satu atau dua baris pendek (`videoRules.captionChars`, bawaan 24 karakter), di pelat kartu, dengan kata yang diucapkan disorot.
   - Disembunyikan otomatis di adegan yang teks layarnya sama dengan suaranya, dan di penutup.
   - `"captions": false` mematikan semuanya.
   - Ekspor SRT selalu berisi seluruh voice over.
@@ -317,6 +318,12 @@ Jangan mengambil gambar dari postingan orang lain.
 - **`voice <slug>`** membuat satu WAV per kalimat di `posts/<slug>/audio/`, dicatat di `audio/voice.json`.
   - Kalimat yang tidak berubah tidak dibuat ulang, jadi mengubah satu adegan hanya membuat satu klip baru.
   - `--force` membuat ulang semuanya.
+- **Satu permintaan untuk semua kalimat.**
+  - `voice` menggabungkan semua kalimat yang perlu dibuat dengan jeda panjang di antaranya, lalu memotong audionya kembali per kalimat. Cara memotongnya: di jeda terpanjang, atau di batas kata hasil transkripsi bila jedanya kurang jelas.
+  - Suaranya jadi seragam sepanjang reel, dan kuota hemat. Gemini tier gratis hanya memberi sekitar 10 permintaan TTS per hari, dan satu reel cukup satu permintaan.
+  - Kalimat dengan `tone` berbeda dibuat di permintaan terpisah.
+  - `--no-batch` membuat satu permintaan per kalimat.
+- **Kuota habis (429)** tercetak beserta waktu tunggunya. Klip yang sudah jadi tetap disimpan, dan menjalankan ulang `voice` hanya membuat yang belum ada.
 - **Suara Gemini.** Lihat daftarnya dengan `voice list`.
   - Yang cocok untuk edukasi kesehatan berbahasa Indonesia: Sulafat (hangat), Achird (ramah), Vindemiatrix (lembut), Kore (tegas), dan Charon (informatif).
   - Dengar dulu: `voice try "Kalimat contoh." --voice Achird`.
@@ -341,13 +348,16 @@ Jangan mengambil gambar dari postingan orang lain.
 
 **Verify (di Chrome)** mengukur setiap adegan dan setiap alternatif saat semua bagiannya sudah masuk:
 
-- teks di dalam zona konten
-- ukuran huruf minimal 40 px untuk isi dan 30 px untuk sumber dan disclaimer
+- teks di dalam zona konten akun
+- tidak ada teks di area tombol Instagram
+- ukuran huruf minimal `minTextPx` untuk isi dan `minMetaPx` untuk sumber dan disclaimer (bawaan 40 px dan 30 px)
 - tidak ada bagian yang saling menimpa
 - tidak ada kata terpotong di tengah
 - tidak ada teks langsung di atas foto
 - semua bagian sudah masuk sebelum adegan berakhir
-- durasi total (gagal di atas 3 menit, peringatan di atas 90 detik)
+- durasi total (gagal di atas `hardMaxSeconds`, peringatan di atas `maxSeconds`)
+
+**Build** juga memperingatkan pembuka yang lebih lama dari `hookMaxSeconds`, adegan yang lebih lama dari `maxSceneSeconds`, dan reel yang lebih pendek dari `minSeconds`. **Scan** memperingatkan voice over yang lebih cepat dari `maxWordsPerSecond`.
 
 Perbaikan selalu lewat isi:
 
@@ -369,3 +379,25 @@ Jangan mengecilkan huruf atau mengedit HTML hasil build.
 - **Spesifikasi MP4:** 1080 x 1920, 30 fps, H.264 10 Mbps, AAC 48 kHz stereo, moov di depan. Ini sesuai spesifikasi Reels Meta.
 - **Sampul.** Cover PNG adalah pembuka yang sudah lengkap. Di grid profil, Instagram memotongnya 3:4 di tengah (y 240 sampai 1680), dan judul pembuka ada di dalamnya.
 - **Caption** (`-caption.txt`) berisi `caption`, sumber lengkap, kredit footage, dan disclaimer akun. Tempel saat mengunggah.
+
+## 12. Zona aman dan aturan video
+
+Video punya zona dan aturannya sendiri, terpisah dari carousel. Video ditonton penuh layar di bawah bilah Reels, nama akun, caption, dan tombol Instagram, beberapa detik per adegan. Carousel dibaca sambil digeser, dengan header dan footer di dalam slide.
+
+| | Carousel (`rules`) | Reels (`videoRules`) |
+| --- | --- | --- |
+| Bingkai | 1080 x 1350, 4:5 | 1080 x 1920, 9:16 |
+| Bebas teks di atas | header slide 168 px (logo, nomor) | 270 px, 14% (bilah Reels Instagram) |
+| Bebas isi penting di bawah | footer slide 168 px (handle, geser) | 672 px, 35% (nama, caption, audio); hanya subtitle dan catatan kaki penutup di pita subtitle |
+| Samping | 96 px | kiri 90 px; kanan 132 px karena kolom tombol (x 960 ke kanan, dari y 1100) |
+| Zona konten | x 96 sampai 984, y 168 sampai 1182 | x 90 sampai 948, y 334 sampai 1248 (di bawah bilah akun); adegan pertama dan terakhir dari y 270 |
+| Huruf terkecil | 30 px | 40 px isi, 30 px sumber |
+| Panjang teks | kata per slide, judul | kata per adegan dan voice over per jenis adegan; kecepatan suara paling cepat 3,2 kata per detik |
+| Waktu | animasi masuk sampai 1,2 detik | pembuka 5 detik, adegan 14 detik, total 15 sampai 90 detik (batas 180) |
+
+- **Mengatur.** Pemilik akun bisa mengubah setiap angka video di `brand.json` bagian `videoRules`. Kunci, bawaan, dan batasnya ada di `references/brand-setup.md`.
+  - Tata letak adegan, garis panduan zona di studio (tombol zona, atau tekan Z), pemeriksaan di browser, dan scan semuanya memakai angka itu.
+  - Ubah hanya atas permintaan pemilik akun, lalu jalankan `brand accept` setelah mereka setuju, seperti perubahan akun lainnya.
+- **Melihat.** `content-studio brand rules --id <akun>` mencetak aturan carousel dan aturan video berdampingan, beserta asalnya (bawaan, akun, atau ikut carousel).
+- **Di studio Reels.** Tab Panduan menampilkan zona dan aturan video akun ini.
+

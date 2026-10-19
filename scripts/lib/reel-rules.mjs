@@ -9,6 +9,9 @@ import { countWords } from './common.mjs';
 import { findPhrase } from './kit.mjs';
 import { MEDIA_FILE, kindOf } from './media.mjs';
 import { spoken, voWords } from './reel-time.mjs';
+import { createHash } from 'node:crypto';
+/* Same key as reel-render.mjs voKey (kept here to avoid a circular import) */
+const voKeyOf = s => createHash('sha256').update(JSON.stringify([String(s.vo || '').trim(), String(s.tone || '').trim()])).digest('hex').slice(0, 16);
 
 const POST_KEYS = ['brand', 'slug', 'title', 'format', 'caption', 'voice', 'captions', 'music', 'sources', 'scenes', 'hooks', 'closings'];
 const SOURCE_KEYS = ['id', 'cite', 'short', 'doi', 'pmid', 'url', 'year', 'note', 'verified', 'design'];
@@ -21,6 +24,7 @@ export const REEL_MEDIA_MAX = { image: 6 * 1024 * 1024, video: 25 * 1024 * 1024,
 export const AUDIO_TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg' };
 const MB = n => (n / 1024 / 1024).toLocaleString('id-ID', { maximumFractionDigits: 1 });
 
+/** `rules` are the account's video rules (videoRulesOf in brand.mjs), not the carousel's. */
 export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = null } = {}) {
   const errors = [], warnings = [], texts = [], medias = [];
   for (const k of Object.keys(reel)) if (!POST_KEYS.includes(k)) errors.push(`Kunci tidak dikenal "${k}". reel.json hanya berisi isi video, bukan gaya atau tata letak.`);
@@ -155,8 +159,14 @@ export function scanReel(reel, brand, rules, icons, { mediaDir = null, audio = n
     else {
       const w = voWords(s.vo).length;
       if (w > def.vo) errors.push(`${path}.vo: ${w} kata, maksimal ${def.vo} untuk ${def.label.toLowerCase()} (sekitar ${Math.round(def.vo / 2.3)} detik). Pecah ke adegan berikutnya.`);
-      if (role === 'open' && w > 16) warnings.push(`${path}.vo: ${w} kata. Pembuka yang kuat selesai dalam 3 sampai 5 detik.`);
+      if (role === 'open' && w / 2.3 > rules.hookMaxSeconds) warnings.push(`${path}.vo: ${w} kata, sekitar ${Math.round(w / 2.3)} detik. Pembuka akun ini selesai dalam ${rules.hookMaxSeconds} detik (videoRules.hookMaxSeconds).`);
       texts.push({ path: `${path}.vo`, text: spoken(s.vo), onScreen: false });
+      /* Pace of the recorded clip, when there is one */
+      const clip = audio && audio.clips && audio.clips[voKeyOf(s)];
+      if (clip && clip.map && clip.map.end - clip.map.start > 0.5) {
+        const wps = w / (clip.map.end - clip.map.start);
+        if (wps > rules.maxWordsPerSecond) warnings.push(`${path}.vo: suaranya ${wps.toFixed(1).replace('.', ',')} kata per detik, batas akun ${String(rules.maxWordsPerSecond).replace('.', ',')}. Persingkat kalimatnya atau minta tempo lebih pelan di voice.style.`);
+      }
     }
     if (!sceneVisual(s)) errors.push(`${path}: tidak ada gambar. Isi "art" (ilustrasi) atau "media" (footage atau foto). Video tanpa gambar hanya teks di layar.`);
     const claimText = [s.vo, s.title, s.label, s.body, s.finding, s.fact].filter(Boolean).join(' ');

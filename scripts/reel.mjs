@@ -38,8 +38,9 @@ function load() {
   const p = join(postDir(), 'reel.json');
   if (!existsSync(p)) fail(`posts/${slug}/reel.json tidak ada.${existsSync(join(postDir(), 'post.json')) ? ' Postingan ini carousel (post.json): pakai scan.mjs, build.mjs, dan verify.mjs.' : ` Buat dengan: node reel.mjs new --brand <akun> --slug ${slug} --title "..."`}`);
   const reel = readJson(p, 'reel.json');
-  const { brand, dir, approved, intact, rules } = loadBrand(root, reel.brand);
-  return { reel, brand, dir, approved, intact, rules };
+  /* Reels follow the account's video rules (videoRules), not the carousel's */
+  const { brand, dir, approved, intact, videoRules } = loadBrand(root, reel.brand);
+  return { reel, brand, dir, approved, intact, rules: videoRules };
 }
 
 function readAudio() {
@@ -87,7 +88,16 @@ function build(ctx, { quiet = false } = {}) {
   const logoLight = sanitizeSvg(readFileSync(join(dir, brand.logo.light), 'utf8')).svg;
   const logoDark = sanitizeSvg(readFileSync(join(dir, brand.logo.dark), 'utf8')).svg;
   const music = reel.music && existsSync(join(mediaDir, reel.music.src)) ? { id: 'music', volume: reel.music.volume ?? 0.12, file: join(mediaDir, reel.music.src), mime: AUDIO_TYPES[extOf(reel.music.src)] } : null;
-  const r = renderReel(reel, { brand, rules, icons: loadIcons(), logoLight, logoDark, media, audio, credits: readCredits(mediaDir, res.medias.map(m => m.src)), warnings: res.warnings, music: music && { id: music.id, volume: music.volume } });
+  const r = renderReel(reel, { brand, rules, videoRules: rules, icons: loadIcons(), logoLight, logoDark, media, audio, credits: readCredits(mediaDir, res.medias.map(m => m.src)), warnings: res.warnings, music: music && { id: music.id, volume: music.volume } });
+  /* Length rules, now that every scene's duration is known */
+  const D = r.DATA, num = n => n.toFixed(1).replace('.', ',');
+  const pace = [];
+  D.seq.hooks.forEach(i => { if (D.scenes[i].dur > rules.hookMaxSeconds) pace.push(`${D.scenes[i].name}: ${num(D.scenes[i].dur)} detik, pembuka paling lama ${rules.hookMaxSeconds} detik (videoRules.hookMaxSeconds). Persingkat voice over-nya.`); });
+  D.seq.main.forEach(i => { if (D.scenes[i].dur > rules.maxSceneSeconds) pace.push(`${D.scenes[i].name}: ${num(D.scenes[i].dur)} detik, satu adegan paling lama ${rules.maxSceneSeconds} detik. Pecah ke dua adegan.`); });
+  if (r.total < rules.minSeconds) pace.push(`Durasi ${num(r.total)} detik, kurang dari ${rules.minSeconds} detik.`);
+  if (r.total > rules.maxSeconds) pace.push(`Durasi ${num(r.total)} detik, lebih dari ${rules.maxSeconds} detik yang disarankan akun.`);
+  if (pace.length) { D.scan.push(...pace); if (!quiet) report('Aturan durasi video', [], pace); }
+  if (r.total > rules.hardMaxSeconds) fail(`Durasi ${num(r.total)} detik melewati batas ${rules.hardMaxSeconds} detik (videoRules.hardMaxSeconds). Kurangi adegan atau persingkat voice over.`);
   /* Voice-over clips and music, each once, as base64 text blocks the player decodes */
   const missing = r.clips.filter(c => !existsSync(join(audioDir, c.file)));
   if (missing.length) fail(`Berkas suara hilang di posts/${slug}/audio/: ${missing.map(c => c.file).join(', ')}. Jalankan ulang: content-studio voice ${slug}`);
@@ -162,7 +172,7 @@ async function verify() {
     const D = await evalJs('JSON.parse(JSON.stringify({ seq: window.__reelCore.DATA.seq, scenes: window.__reelCore.DATA.scenes.map(s => ({ name: s.name, dur: s.dur, estimated: s.estimated })) }))');
     const role = i => { const h = D.seq.hooks.indexOf(i), c = D.seq.closings.indexOf(i), m = D.seq.main.indexOf(i); return h >= 0 ? (h ? `pembuka ${h + 1}` : '1') : c >= 0 ? (c ? `penutup ${c + 1}` : String(D.seq.main.length + 2)) : String(m + 2); };
     const file = i => { const h = D.seq.hooks.indexOf(i), c = D.seq.closings.indexOf(i), m = D.seq.main.indexOf(i); return h > 0 ? `hook-${h + 1}` : c > 0 ? `closing-${c + 1}` : `scene-${h === 0 ? 1 : c === 0 ? D.seq.main.length + 2 : m + 2}`; };
-    const names = { zone: 'zona konten', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
+    const names = { zone: 'zona konten', rail: 'tombol Instagram', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
     console.log(`\nPemeriksaan di browser: posts/${slug}/${slug}.html\n${'─'.repeat(60)}`);
     for (const r of rows) {
       const bad = Object.keys(r.ok).filter(k => !r.ok[k]);
@@ -171,8 +181,9 @@ async function verify() {
     }
     const info = await evalJs('window.__reel.info()');
     console.log(`\n  Durasi ${String(info.total.toFixed(1)).replace('.', ',')} detik, ${info.seq.length} adegan, ${info.audio ? `${info.audio} klip suara` : 'belum ada suara (waktu perkiraan)'}.`);
-    if (info.total > 180) { code = 1; console.log('  ✗ Lebih dari 3 menit: Instagram tidak merekomendasikan Reels sepanjang ini ke penonton baru.'); }
-    else if (info.total > 90) console.log('  ! Lebih dari 90 detik. Video penjelasan yang padat biasanya 30 sampai 75 detik.');
+    const vr = await evalJs('window.__reelCore.DATA.videoRules');
+    if (info.total > vr.hardMaxSeconds) { code = 1; console.log(`  ✗ Lebih dari ${vr.hardMaxSeconds} detik (videoRules.hardMaxSeconds).`); }
+    else if (info.total > vr.maxSeconds) console.log(`  ! Lebih dari ${vr.maxSeconds} detik yang disarankan akun. Video penjelasan yang padat biasanya 30 sampai 75 detik.`);
     if (!args['no-png']) {
       const dir = join(postDir(), 'preview');
       mkdirSync(dir, { recursive: true });

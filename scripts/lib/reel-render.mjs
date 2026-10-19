@@ -7,6 +7,7 @@ import { brandCss } from './render.mjs';
 import { uniqueIds } from './svg.mjs';
 import { esc, CROSS } from './render-kit.mjs';
 import { sha256, slugify } from './common.mjs';
+import { videoZones } from './brand.mjs';
 
 /** The voice-over clip that belongs to a scene: same words, same delivery note. */
 export const voKey = s => sha256(JSON.stringify([String(s.vo || '').trim(), String(s.tone || '').trim()])).slice(0, 16);
@@ -30,8 +31,14 @@ function overlap(onScreen, vo) {
   return b.length ? b.filter(w => a.has(w)).length / b.length : 0;
 }
 
+/** The account's video zones as CSS variables on the frame: layout, guide overlay and checks read the same numbers. */
+export function zoneCss(v) {
+  const z = videoZones(v);
+  return `.rf { --safe-top: ${z.top}px; --content-bottom: ${z.bottom}px; --side: ${z.side}px; --side-r: ${z.right}px; --bar: ${z.bar}px; --rail-w: ${v.railWidth}px; --rail-top: ${v.railTop}px; --cap-top: ${v.captionTop}px; --cap-h: ${v.captionBottom - v.captionTop}px; }`;
+}
+
 export function renderReel(reel, ctx) {
-  const b = ctx.brand, audio = ctx.audio || { clips: {} };
+  const b = ctx.brand, audio = ctx.audio || { clips: {} }, vr = ctx.videoRules;
   const icons = { ...EXTRA_ICONS, ...ctx.icons };
   let lid = 0;
   const logo = theme => uniqueIds(theme === 'dark' ? ctx.logoDark : ctx.logoLight, 'rl' + ++lid);
@@ -62,7 +69,7 @@ export function renderReel(reel, ctx) {
     const dur = +Math.max(base, end + 0.55).toFixed(2);
     const tr = e.role === 'hook' ? 'cut' : s.transition || (e.role === 'close' ? closeTr : (s.type === 'footage' && (s.variant || 'full') === 'full' ? ['fade', 'zoom'][e.k % 2] : CYCLE[e.k % CYCLE.length]));
     const onScreen = [s.title, s.term, s.myth].filter(Boolean).join(' ');
-    const captions = reel.captions !== false && s.captions !== false && e.role !== 'close' && !(s.vo && onScreen && overlap(onScreen, s.vo) >= 0.6);
+    const captions = (reel.captions ?? vr.captions) !== false && s.captions !== false && e.role !== 'close' && !(s.vo && onScreen && overlap(onScreen, s.vo) >= 0.6);
     let vo = null;
     if (clip) {
       let n = clips.findIndex(c => c.file === clip.file);
@@ -73,8 +80,8 @@ export function renderReel(reel, ctx) {
     const name = s.name || (e.role === 'hook' ? (i === 0 ? 'Pembuka' : `Pembuka ${i + 1}`) : e.role === 'close' ? 'Penutup' : def.label);
     scenes.push({
       name, slug: slugify(name), type: s.type, label: `${def.label}${v ? ', ' + v.toLowerCase() : ''}`, theme, dur, tr, trLen: tr === 'cut' ? 0 : TRANSITION,
-      captions, chrome: e.role === 'mid' && !(s.type === 'footage' && (s.variant || 'full') === 'full'),
-      settle: +Math.min(dur - 0.05, end + 0.15).toFixed(2), vo, voText: spoken(s.vo || ''), caps: captionChunks(words),
+      captions, chrome: vr.brandBar && e.role === 'mid' && !(s.type === 'footage' && (s.variant || 'full') === 'full'),
+      settle: +Math.min(dur - 0.05, end + 0.15).toFixed(2), vo, voText: spoken(s.vo || ''), caps: captionChunks(words, { maxChars: vr.captionChars }),
       tags: [s.media ? 'footage' : '', s.art ? `ilustrasi ${s.art}` : '', ...[].concat(s.source || []).map(id => `sumber ${id}`)].filter(Boolean),
       estimated: !!(s.vo && !clip),
       credits: s.media && ctx.credits && ctx.credits[s.media.src] ? [ctx.credits[s.media.src]] : [],
@@ -90,13 +97,13 @@ export function renderReel(reel, ctx) {
   const total = seq.hooks.slice(0, 1).concat(seq.main, seq.closings.slice(0, 1)).reduce((n, i) => n + scenes[i].dur, 0);
   return {
     TITLE: esc(reel.title),
-    BRAND_CSS: brandCss(b),
+    BRAND_CSS: brandCss(b) + '\n' + zoneCss(vr),
     NAV_LOCKUP: `<span class="logo-img">${logo('light')}</span><b>${esc(b.wordmark || b.name)}</b>`,
     META: esc(`${reel.title} · Reels ${Math.round(total)} detik`),
     STAGE_LABEL: esc(`${reel.title}, video 9:16. Spasi untuk memutar.`),
     SCENES: markup.join('\n'),
     LOGO_LIGHT: logo('light'), LOGO_DARK: logo('dark'), HANDLE: `<span>@${esc(b.handle)}</span>`,
-    GUIDE: guide(scenes, seq),
+    GUIDE: guide(scenes, seq, vr),
     clips,
     total,
     DATA: {
@@ -104,20 +111,35 @@ export function renderReel(reel, ctx) {
       scenes, seq, sources: (reel.sources || []).map(s => ({ id: s.id, short: s.short, cite: s.cite, link: sources[s.id].link, verified: s.verified || '' })),
       credits: [...new Set(Object.values(ctx.credits || {}))], caption: reel.caption || '', disclaimer: b.disclaimer || '', voice: voiceNote, scan: ctx.warnings || [],
       music: ctx.music || null,
+      videoRules: vr, zones: videoZones(vr),
     },
   };
 }
 
-function guide(scenes, seq) {
+function guide(scenes, seq, v) {
   const rows = (list, k) => list.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
   const used = [...new Set([...seq.main, seq.closings[0]].map(i => scenes[i].tr).filter(t => t !== 'cut'))];
-  return `<div class="sec"><h3>Zona</h3><dl class="kv">${rows([
-    ['Bilah atas', 'y 0 sampai 236: nama Reels dan kamera Instagram. Tanpa teks.'],
-    ['Konten', 'x 90 sampai 990, y 312 sampai 1240 (236 di adegan pertama dan terakhir). Aman untuk iklan Meta: atas 14%, bawah 35%.'],
-    ['Subtitle', 'y 1268 sampai 1458, x 160 sampai 920, satu atau dua baris pendek.'],
-    ['Bilah bawah', 'y 1460 sampai 1920: nama akun, caption, audio. Tombol di kanan mulai y 980.'],
-    ['Grid profil', 'Sampul tampil terpotong 3:4 di tengah (y 240 sampai 1680): judul pembuka ada di dalamnya.'],
-  ])}</dl><p class="note">Tombol zona di bawah video menampilkan area Instagram di atas adegan.</p></div>
+  const z = videoZones(v), pc = n => `${Math.round((n / 1920) * 1000) / 10}%`.replace('.', ',');
+  const num = n => String(n).replace('.', ',');
+  return `<div class="sec"><h3>Zona aman video (9:16)</h3><p class="note">Aturan ini khusus video. Carousel memakai zonanya sendiri: header dan footer 168 px, margin 96 px.</p><dl class="kv">${rows([
+    ['Atas', `y 0 sampai ${z.top} (${pc(z.top)}): bilah Reels dan kamera Instagram. Tanpa teks.`],
+    ['Bawah', `y ${z.bottom} sampai 1920 (${pc(1920 - z.bottom)}): nama akun, caption, audio. Tanpa isi penting; hanya subtitle dan catatan kaki penutup di pita subtitle.`],
+    ['Samping', `${z.side} px kiri, ${z.right} px kanan (kanan juga memberi ruang untuk tombol).`],
+    ['Tombol', `x ${z.rail.x} ke kanan, dari y ${z.rail.y}: suka, komentar, kirim. Tanpa teks.`],
+    ['Konten', `x ${z.content.x} sampai ${z.content.x + z.content.w}, y ${z.content.y} sampai ${z.bottom}${z.bar ? `, di bawah bilah akun (y ${z.top} sampai ${z.top + 52})` : ''}. Adegan pertama dan terakhir mulai y ${z.top}.`],
+    ['Subtitle', `y ${v.captionTop} sampai ${v.captionBottom}, x ${z.caption.x} sampai ${z.caption.x + z.caption.w}, sekitar ${v.captionChars} karakter per baris.`],
+    ['Grid profil', 'Sampul terpotong 3:4 di tengah (y 240 sampai 1680): judul pembuka ada di dalamnya.'],
+  ])}</dl><p class="note">Tombol zona di bawah video menggambar area ini di atas adegan.</p></div>
+<div class="sec"><h3>Aturan video</h3><dl class="kv">${rows([
+    ['Huruf terkecil', `${v.minTextPx} px untuk isi, ${v.minMetaPx} px untuk sumber, disclaimer, dan handle.`],
+    ['Kecepatan suara', `paling cepat ${num(v.maxWordsPerSecond)} kata per detik.`],
+    ['Pembuka', `selesai dalam ${num(v.hookMaxSeconds)} detik.`],
+    ['Per adegan', `paling lama ${num(v.maxSceneSeconds)} detik, satu ide.`],
+    ['Durasi', `${v.minSeconds} sampai ${v.maxSeconds} detik disarankan, batas ${v.hardMaxSeconds} detik.`],
+    ['Subtitle', v.captions ? 'tampil, kecuali di adegan yang teks layarnya sama dengan suaranya dan di penutup.' : 'tidak tampil (dimatikan akun).'],
+    ['Tulisan', `${v.noExclamation ? 'tanpa tanda seru' : 'tanda seru boleh'}, ${v.noEmDash ? 'tanpa tanda pisah panjang' : 'tanda pisah boleh'}${(v.bannedPhrases || []).length ? `, ${v.bannedPhrases.length} frasa terlarang` : ''}.`],
+    ['Bukti', 'setiap angka dan klaim penelitian bersumber, sumber terverifikasi.'],
+  ])}</dl><p class="note">Diatur di brand.json bagian videoRules oleh pemilik akun; lihat semuanya dengan content-studio brand rules --id &lt;akun&gt;.</p></div>
 <div class="sec"><h3>Huruf</h3><dl class="kv">${rows([
     ['Pembuka', '120/126, 700 (turun ke 104 atau 92 untuk kata panjang)'], ['Judul adegan', '72/80 sampai 92/100, 700'], ['Isi', '48/64 sampai 56/72'],
     ['Angka', '300/280 dan 180/176, dihitung naik'], ['Subtitle', '58/84, 700, kata yang diucapkan bersorot'], ['Terkecil', '40 px untuk isi, 30 px untuk sumber dan disclaimer'],

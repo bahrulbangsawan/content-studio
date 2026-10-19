@@ -280,12 +280,16 @@
   }
   function scheduleInto(ctx, dest, plan, from, when, bufs) {
     const list = [];
+    /* Voice a little under full scale (about -1 dB), so loud TTS peaks do not clip in the AAC encoder */
+    const voice = ctx.createGain();
+    voice.gain.value = 0.89;
+    voice.connect(dest);
     for (const a of plan) {
       const buf = bufs.get(a.id);
       if (!buf || a.at + buf.duration <= from) continue;
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(dest);
+      src.connect(voice);
       if (a.at >= from) src.start(when + (a.at - from)); else src.start(when, from - a.at);
       list.push(src);
     }
@@ -503,6 +507,16 @@
 
   /* ---------- Pemeriksaan di halaman: zona, ukuran huruf, tumpang tindih, kata terpotong, teks di atas foto ---------- */
   const META_TEXT = '.r-src, .r-refs, .r-disc, .r-ev-src, .r-meta, .r-handle, .chrome, .r-of';
+  const VR = DATA.videoRules, ZN = DATA.zones;
+  /* Guide labels carry the account's numbers */
+  (function guideLabels() {
+    const pc = n => `${Math.round(n / 19.2 * 10) / 10}%`.replace('.', ',');
+    $('#gTop').textContent = `Atas Instagram: 0 sampai ${ZN.top} px (${pc(ZN.top)})`;
+    $('#gBottom').textContent = `Bawah Instagram: ${ZN.bottom} sampai 1920 px (${pc(1920 - ZN.bottom)})`;
+    $('#gRail').textContent = `Tombol: dari ${ZN.rail.y} px`;
+    $('#gContent').textContent = `Zona konten ${ZN.content.w} x ${ZN.content.h}`;
+    $('#gCap').textContent = `Subtitle ${VR.captionTop} sampai ${VR.captionBottom}`;
+  })();
   function showOnly(i, tau) {
     REG.forEach((R, j) => { const v = j === i; if (R.vis !== v) { R.sec.hidden = !v; R.vis = v; R.anims = null; } untrans(j); });
     drawScene(i, tau);
@@ -519,21 +533,24 @@
     const sec = REG[i].sec, fr = rf.getBoundingClientRect(), k = fr.width / W;
     const box = r => ({ x: (r.left - fr.left) / k, y: (r.top - fr.top) / k, w: r.width / k, h: r.height / k });
     const cz = $('.cz', sec), z = box(cz.getBoundingClientRect());
-    const res = { zone: [], min: [], overlap: [], words: [], media: [], timing: [] };
+    const res = { zone: [], rail: [], min: [], overlap: [], words: [], media: [], timing: [] };
     const walker = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT);
     const medias = $$('.md', sec).map(m => box(m.getBoundingClientRect()));
     let node, minPx = 999;
     while ((node = walker.nextNode())) {
       if (!node.textContent.trim()) continue;
       const pe = node.parentElement;
-      if (pe.closest('svg, [hidden], .md') || getComputedStyle(pe).visibility === 'hidden') continue;
+      /* Decorative glyphs (aria-hidden, e.g. the big quote mark) are drawn, not read */
+      if (pe.closest('svg, [hidden], .md, [aria-hidden="true"]') || getComputedStyle(pe).visibility === 'hidden') continue;
       const range = document.createRange();
       range.selectNodeContents(node);
       const rects = Array.from(range.getClientRects()).map(box).filter(r => r.w > 1 && r.h > 1);
       const fs = parseFloat(getComputedStyle(pe).fontSize);
       const meta = !!pe.closest(META_TEXT);
       minPx = Math.min(minPx, fs);
-      if (fs < (meta ? 30 : 40) - 0.5) res.min.push(`"${node.textContent.trim().slice(0, 24)}" ${Math.round(fs)} px (minimal ${meta ? 30 : 40})`);
+      const minFs = meta ? VR.minMetaPx : VR.minTextPx;
+      if (fs < minFs - 0.5) res.min.push(`"${node.textContent.trim().slice(0, 24)}" ${Math.round(fs)} px (minimal ${minFs})`);
+      for (const r of rects) if (r.x + r.w > ZN.rail.x + 2 && r.y + r.h > ZN.rail.y + 2 && VR.railWidth > 0) { res.rail.push(`"${node.textContent.trim().slice(0, 24)}" di area tombol Instagram`); break; }
       for (const r of rects) {
         if (r.x < z.x - 3 || r.x + r.w > z.x + z.w + 3 || r.y < z.y - 3 || r.y + r.h > z.y + z.h + 3) { res.zone.push(`"${node.textContent.trim().slice(0, 24)}" keluar zona konten`); break; }
       }
@@ -583,7 +600,7 @@
     render(keep);
     const list = $('#chkList');
     list.replaceChildren();
-    const names = { zone: 'zona konten', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
+    const names = { zone: 'zona konten', rail: 'tombol Instagram', min: 'ukuran huruf', overlap: 'tumpang tindih', words: 'kata terpotong', media: 'teks di atas foto', timing: 'waktu masuk' };
     let bad = 0;
     results.forEach(r => {
       const fails = Object.keys(r.ok).filter(key => !r.ok[key]);

@@ -119,6 +119,7 @@ Batas ini ada supaya setiap postingan dari akun yang sama terlihat seperti satu 
 | `posts/<slug>/media/`: foto dan video | Hanya berkas dari pemilik akun | Salin berkas yang diberi pemilik ke folder itu. Jangan mengambil foto dari internet atau dari postingan orang lain; tanpa berkas, slide memakai bingkai kosong |
 | `brand.json`, logo, font, warna, aturan akun yang sudah ada | Hanya atas permintaan jelas pemilik | Ubah lewat `brand.mjs`, tunjukkan perubahannya, jalankan `accept` hanya setelah pemilik setuju |
 | Batas aturan (`maxWordsPerSlide`, `titleMax`, dan lainnya) agar scan lolos | Tidak | Persingkat teksnya. Aturan dilonggarkan hanya bila pemilik akun meminta |
+| `videoRules` di brand.json: zona aman dan aturan video (Reels) | Hanya atas permintaan jelas pemilik | Aturan video terpisah dari aturan carousel (`rules`). Lihat dengan `content-studio brand rules --id <akun>`; ubah lewat brand.json, `brand check`, lalu `accept` setelah pemilik setuju. Jangan mengubahnya agar sebuah reel lolos |
 | `<slug>.html` hasil build | Tidak | Ubah `post.json`, lalu build ulang. Halaman akan tertimpa |
 | `content-studio/components/<id>.mjs`: komponen buatan proyek | Ya, bila tidak ada komponen yang cocok | Ikuti `references/authoring.md`. Komponen baru dipakai hanya setelah lolos `component.mjs check` |
 | `content-studio/components/<id>.pass.json` dan `README.md` | Tidak | Ditulis gerbang saat komponen lolos. Jangan dibuat atau diedit sendiri |
@@ -237,7 +238,18 @@ Beri tahu pengguna, singkat:
 
 ## Reels
 
-Baca `references/reels.md` sebelum menulis `reel.json`. Ringkasnya:
+Baca `references/reels.md` sebelum menulis `reel.json`.
+
+Reels mengikuti **aturan video** akun (`videoRules` di brand.json), terpisah dari aturan carousel (`rules`):
+
+- **Zona aman 9:16.**
+  - Bagian atas 14% bebas teks, karena tertutup bilah Reels.
+  - Bagian bawah 35% bebas isi penting, karena tertutup nama, caption, dan audio.
+  - Margin kanan lebih lebar untuk kolom tombol Instagram.
+- **Ukuran dan tempo.** Huruf minimal 40 px, voice over paling cepat 3,2 kata per detik.
+- **Durasi.** Pembuka paling lama 5 detik, satu adegan paling lama 14 detik, total yang disarankan 15 sampai 90 detik.
+
+Tata letak, garis panduan zona di studio, dan pemeriksaan memakai angka akun itu. Bagian 12 di `references/reels.md` membandingkan keduanya. Ringkasnya:
 
 ### 1. Bukti dulu
 
@@ -321,7 +333,7 @@ Laporkan ke pengguna:
 - **`ref.mjs` keluar dengan kode 3 (Instagram minta login)**: sampaikan pesan skrip ke pengguna. Minta mereka login Instagram di Chrome dengan akun cadangan, atau memberi profil lewat `--browser` atau berkas lewat `--cookies`, lalu ulangi. Jangan membuka database cookie browser sendiri dan jangan mencari pengunduh lain untuk melewati login. Kalau pengguna tidak bisa menunggu, minta screenshot slide atau ringkasan isinya dan kerjakan draf dari situ.
 - **`ref.mjs` gagal padahal sudah login**: Instagram sering berubah. Jalankan `ref.mjs --update`, lalu ulangi. Kalau masih gagal, tunjukkan pesan galatnya ke pengguna.
 - **Kode keluar 2 dari voice, transcribe, atau footage (key belum ada)**: minta pengguna menjalankan `content-studio setup` di terminalnya sendiri. Jangan meminta key ditempel di percakapan. Sambil menunggu, lanjutkan naskah dan build dengan waktu perkiraan, atau `voice --provider say` untuk pratinjau di Mac.
-- **Gemini TTS menolak (401, 403, 429)**: tunjukkan pesannya. 401 dan 403 berarti key salah atau belum aktif. 429 berarti kuota habis, jadi coba lagi nanti atau pakai `--model gemini-3.8-flash-lite-tts`. Jangan mengganti ke layanan lain tanpa persetujuan pengguna.
+- **Gemini TTS menolak (401, 403, 429)**: tunjukkan pesannya. 401 dan 403 berarti key salah atau belum aktif. 429 berarti kuota habis; tier gratis hanya sekitar 10 permintaan TTS per hari. `voice` sudah menggabungkan semua kalimat dalam satu permintaan dan menyimpan klip yang sudah jadi. Jalankan ulang setelah waktu tunggu yang tercetak, atau minta pengguna menaikkan tier. Jangan mengganti ke layanan lain tanpa persetujuan pengguna.
 - **`evidence verify` menemukan sumber yang tidak ada, salah tahun, atau ditarik**: ganti sumbernya dengan yang benar dari `evidence search`, atau hapus klaimnya. Jangan menandai `verified` sendiri.
 - **Footage tidak cocok atau tidak ada yang pas**: pakai ilustrasi katalog. Jangan memakai gambar dari situs lain. Bila pemilik akun punya video sendiri, minta berkasnya.
 - **Ekspor MP4 gagal**: pastikan Chrome ada (`content-studio doctor`). Halaman yang dibangun dengan versi lama perlu dibangun ulang.
