@@ -25,17 +25,9 @@ Panduan untuk Claude ada di [`SKILL.md`](SKILL.md). Rincian komponen, aturan, da
 
 ## Memasang
 
-Repo ini privat. Siapa pun yang memasang perlu akses ke repo dan GitHub yang sudah login di komputernya, kecuali lewat ZIP untuk Claude Desktop.
-
 ### Claude Code (terminal, VS Code, JetBrains, dan tab Code di aplikasi desktop)
 
-Cara yang disarankan adalah sebagai plugin, karena paling mudah diperbarui. Sekali saja, sambungkan git ke akun GitHub:
-
-```bash
-gh auth login && gh auth setup-git
-```
-
-Lalu di Claude Code, jalankan satu baris (Claude Code 2.1.275 atau lebih baru):
+Cara yang disarankan adalah sebagai plugin, karena paling mudah diperbarui. Di Claude Code, jalankan satu baris (Claude Code 2.1.275 atau lebih baru):
 
 ```
 /plugin install content-studio --marketplace bahrulbangsawan/content-studio
@@ -65,7 +57,7 @@ Untuk memperbarui:
 Bila tidak ingin memakai plugin, pasang sebagai skill pribadi:
 
 ```bash
-gh repo clone bahrulbangsawan/content-studio ~/.claude/skills/content-studio
+git clone https://github.com/bahrulbangsawan/content-studio.git ~/.claude/skills/content-studio
 ```
 
 Perbarui dengan `git -C ~/.claude/skills/content-studio pull`. Untuk satu proyek saja, clone ke `.claude/skills/content-studio` di folder proyek.
@@ -87,6 +79,8 @@ Untuk organisasi Team atau Enterprise, pemilik organisasi bisa menambahkan repo 
 - **Chrome, Chromium, atau Edge** untuk verifikasi, gerbang komponen, dan pratinjau PNG. Chromium dari Playwright juga terdeteksi. Set `CHROME_PATH` bila browser tidak ditemukan.
 - **Python 3 dan uv (opsional)**, hanya untuk `scripts/ref.mjs`, yang mengambil bahan dari link Instagram. gallery-dl dipasang otomatis ke `~/.content-studio/gallery-dl`.
 - **ffmpeg (opsional)**, untuk memecah video referensi menjadi frame.
+
+Font Inter, ikon Tabler, dan mp4-muxer disertakan dengan lisensinya masing-masing; lihat [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Memulai
 
